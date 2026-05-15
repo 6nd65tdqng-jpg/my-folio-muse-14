@@ -7,6 +7,11 @@ import type {
   Settings,
   Currency,
 } from "./portfolio-types";
+import {
+  SEED_HOLDINGS,
+  SEED_TRANSACTIONS,
+  genSeedHistory,
+} from "./portfolio-seed";
 
 interface PortfolioState {
   holdings: Holding[];
@@ -39,102 +44,9 @@ const defaultSettings: Settings = {
   fxRates: { USD: 1, HKD: 0.128, EUR: 1.08, GBP: 1.27, JPY: 0.0064, CNY: 0.14 },
 };
 
-const seed: Holding[] = [
-  {
-    id: "h1",
-    ticker: "VOO",
-    name: "Vanguard S&P 500 ETF",
-    assetType: "equity",
-    exchange: "NYSE",
-    quantity: 50,
-    avgCostBasis: 400,
-    currentPrice: 512,
-    prevClose: 508,
-    currency: "USD",
-    purchaseDate: "2024-01-15",
-  },
-  {
-    id: "h2",
-    ticker: "AAPL",
-    name: "Apple Inc.",
-    assetType: "equity",
-    exchange: "NASDAQ",
-    quantity: 30,
-    avgCostBasis: 165,
-    currentPrice: 212,
-    prevClose: 215,
-    currency: "USD",
-    purchaseDate: "2023-08-10",
-  },
-  {
-    id: "h3",
-    ticker: "0700.HK",
-    name: "Tencent Holdings",
-    assetType: "equity",
-    exchange: "HKEX",
-    quantity: 100,
-    avgCostBasis: 350,
-    currentPrice: 405,
-    prevClose: 398,
-    currency: "HKD",
-    purchaseDate: "2024-02-20",
-  },
-  {
-    id: "h4",
-    ticker: "BTC",
-    name: "Bitcoin",
-    assetType: "crypto",
-    quantity: 0.5,
-    avgCostBasis: 45000,
-    currentPrice: 67500,
-    prevClose: 66200,
-    currency: "USD",
-    purchaseDate: "2024-03-10",
-    coingeckoId: "bitcoin",
-  },
-  {
-    id: "h5",
-    ticker: "ETH",
-    name: "Ethereum",
-    assetType: "crypto",
-    quantity: 4,
-    avgCostBasis: 2200,
-    currentPrice: 3450,
-    prevClose: 3400,
-    currency: "USD",
-    purchaseDate: "2024-04-02",
-    coingeckoId: "ethereum",
-  },
-];
-
-const seedTx: Transaction[] = seed.map((h) => ({
-  id: "tx-" + h.id,
-  type: "buy" as const,
-  ticker: h.ticker,
-  quantity: h.quantity,
-  price: h.avgCostBasis,
-  date: h.purchaseDate,
-  fees: 0,
-  currency: h.currency,
-}));
-
-function genHistory(currentValue: number): PortfolioSnapshot[] {
-  const days = 180;
-  const out: PortfolioSnapshot[] = [];
-  let v = currentValue * 0.78;
-  const now = Date.now();
-  for (let i = days; i >= 0; i--) {
-    const drift = 0.0015;
-    const noise = (Math.random() - 0.48) * 0.02;
-    v = v * (1 + drift + noise);
-    out.push({
-      date: new Date(now - i * 86400000).toISOString().slice(0, 10),
-      value: Math.round(v * 100) / 100,
-    });
-  }
-  out[out.length - 1] = { ...out[out.length - 1], value: currentValue };
-  return out;
-}
+const seed: Holding[] = SEED_HOLDINGS;
+const seedTx: Transaction[] = SEED_TRANSACTIONS;
+const genHistory = genSeedHistory;
 
 const seedValue = seed.reduce(
   (acc, h) =>
