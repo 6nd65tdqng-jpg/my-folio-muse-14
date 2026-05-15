@@ -72,11 +72,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Lumen Folio — Portfolio Tracker" },
+      {
+        name: "description",
+        content:
+          "Track equities and crypto across currencies with live prices, P&L, and analytics.",
+      },
+      { name: "author", content: "Lumen Folio" },
+      { property: "og:title", content: "Lumen Folio — Portfolio Tracker" },
+      {
+        property: "og:description",
+        content:
+          "Professional portfolio tracking for equities and crypto with real-time analytics.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
