@@ -1,64 +1,45 @@
+import Papa from "papaparse";
 import type { Holding, AssetType, Currency } from "./portfolio-types";
 
-const HEADER_KEYS = ["ticker", "quantity", "avg_cost_basis"];
+const HEADER_HINTS = [
+  "ticker",
+  "symbol",
+  "quantity",
+  "qty",
+  "shares",
+  "costbasis",
+  "avg_cost_basis",
+];
 
-function parseCsv(text: string): Record<string, string>[] {
-  const lines = text
-    .replace(/\r\n/g, "\n")
-    .split("\n")
-    .filter((l) => l.trim().length > 0);
-  if (lines.length === 0) return [];
+function normKey(s: string): string {
+  return s.toLowerCase().replace(/[\s_\-]+/g, "");
+}
 
-  function splitLine(line: string): string[] {
-    const out: string[] = [];
-    let cur = "";
-    let inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (inQ) {
-        if (c === '"' && line[i + 1] === '"') {
-          cur += '"';
-          i++;
-        } else if (c === '"') inQ = false;
-        else cur += c;
-      } else {
-        if (c === '"') inQ = true;
-        else if (c === ",") {
-          out.push(cur);
-          cur = "";
-        } else cur += c;
-      }
-    }
-    out.push(cur);
-    return out.map((s) => s.trim());
-  }
+function num(v: unknown): number {
+  if (v === null || v === undefined || v === "") return NaN;
+  if (typeof v === "number") return v;
+  return parseFloat(String(v).replace(/[, ]/g, ""));
+}
 
-  // Skip preamble rows until we find a row containing the expected header keys.
+function parseCsv(text: string): Record<string, unknown>[] {
+  // Skip any preamble rows until we find a row containing recognizable headers.
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
   let headerIdx = 0;
   for (let i = 0; i < lines.length; i++) {
-    const cells = splitLine(lines[i]).map((c) =>
-      c.toLowerCase().replace(/\s+/g, "_"),
-    );
-    if (HEADER_KEYS.every((k) => cells.includes(k))) {
+    const norm = lines[i].toLowerCase().replace(/[\s_\-"]+/g, "");
+    if (HEADER_HINTS.some((k) => norm.includes(k))) {
       headerIdx = i;
       break;
     }
   }
-
-  const headers = splitLine(lines[headerIdx]).map((h) =>
-    h.toLowerCase().replace(/\s+/g, "_"),
-  );
-  return lines.slice(headerIdx + 1).map((line) => {
-    const cells = splitLine(line);
-    const row: Record<string, string> = {};
-    headers.forEach((h, i) => (row[h] = cells[i] ?? ""));
-    return row;
+  const trimmed = lines.slice(headerIdx).join("\n");
+  const result = Papa.parse<Record<string, unknown>>(trimmed, {
+    header: true,
+    dynamicTyping: true,
+    skipEmptyLines: true,
+    transformHeader: (h) => normKey(h),
   });
-}
-
-function num(v: string | undefined): number {
-  if (!v) return NaN;
-  return parseFloat(v.replace(/[, ]/g, ""));
+  return result.data.filter((r) => r && Object.keys(r).length > 0);
 }
 
 const CRYPTO_TICKERS: Record<string, string> = {
@@ -89,29 +70,38 @@ export function holdingsFromCsv(text: string): CsvImportResult {
   const fxAccum: Partial<Record<Currency, { sum: number; n: number }>> = {};
 
   rows.forEach((r, idx) => {
-    const ticker = (r.ticker || r.symbol || "").trim().toUpperCase();
+    const tickerRaw = r.ticker ?? r.symbol ?? "";
+    const ticker = String(tickerRaw).trim().toUpperCase();
     if (!ticker) {
       skipped.push({ row: idx + 2, reason: "missing ticker" });
       return;
     }
-    const quantity = num(r.quantity || r.qty || r.shares);
+    const quantity = num(r.quantity ?? r.qty ?? r.shares);
     const avg = num(
-      r.avg_cost_basis || r.avg_cost || r.cost_basis || r.avg_price,
+      r.costbasis ??
+        r.avgcostbasis ??
+        r.avgcost ??
+        r.avgprice ??
+        r.cost,
     );
-    const last = num(r.last_price || r.current_price || r.price);
+    const last = num(
+      r.currentprice ?? r.lastprice ?? r.price ?? r.marketprice,
+    );
     if (!isFinite(quantity) || quantity <= 0) {
       skipped.push({ row: idx + 2, reason: "invalid quantity" });
       return;
     }
-    const currencyRaw = (r.currency || "USD").trim().toUpperCase();
+    const currencyRaw = String(r.currency ?? "USD")
+      .trim()
+      .toUpperCase();
     const currency = (
       ["USD", "HKD", "EUR", "GBP", "JPY", "CNY"].includes(currencyRaw)
         ? currencyRaw
         : "USD"
     ) as Currency;
 
-    // Infer FX rate from market_value_usd when present and currency != USD.
-    const mvUsd = num(r.market_value_usd);
+    // Infer FX rate from market value (USD) when present and currency != USD.
+    const mvUsd = num(r.marketvalueusd ?? r.marketvalue ?? r.value);
     if (
       currency !== "USD" &&
       isFinite(mvUsd) &&
@@ -129,18 +119,20 @@ export function holdingsFromCsv(text: string): CsvImportResult {
       }
     }
 
+    const typeHint = String(r.type ?? "").toLowerCase();
     const cgId = CRYPTO_TICKERS[ticker];
-    const isCrypto = !!cgId;
+    const isCrypto = typeHint === "crypto" || !!cgId;
     const exchange = ticker.includes(".HK")
       ? "HKEX"
       : isCrypto
         ? undefined
-        : (r.brokerage || r.exchange || "").trim() || undefined;
+        : String(r.broker ?? r.brokerage ?? r.exchange ?? "").trim() ||
+          undefined;
 
     holdings.push({
       id: crypto.randomUUID(),
       ticker,
-      name: (r.name || ticker).trim(),
+      name: String(r.name ?? ticker).trim(),
       assetType: (isCrypto ? "crypto" : "equity") as AssetType,
       exchange,
       quantity,
