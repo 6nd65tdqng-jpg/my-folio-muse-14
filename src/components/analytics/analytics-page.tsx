@@ -1138,24 +1138,45 @@ function ResearchPanel({
   const [research, setResearch] = useState<string | null>(null);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [researchError, setResearchError] = useState<string | null>(null);
+  const runAIResearch = useServerFn(generateAIResearch);
 
-  function runResearch() {
+  async function runResearch() {
     setBusy(true);
-    setTimeout(() => {
-      setResearch(
-        generateResearch(h, {
+    setResearchError(null);
+    try {
+      const res = await runAIResearch({
+        data: {
+          ticker: h.ticker,
+          name: h.name,
+          assetType: h.assetType,
+          currentPrice: h.currentPrice,
+          avgCostBasis: h.avgCostBasis,
+          quantity: h.quantity,
+          currency: h.currency,
           pnlPct: m.pnlPct,
-          weight,
+          weightPct: weight,
           vol: stats.vol,
-          mdd: stats.mdd,
-          sharpe: stats.sharpe,
           beta: stats.beta,
           return1Y: stats.return1Y,
-        }),
-      );
-      setGeneratedAt(new Date().toLocaleTimeString());
+          sharpe: stats.sharpe,
+          maxDrawdown: stats.mdd,
+        },
+      });
+      if (res.error) {
+        setResearchError(res.error);
+        toast.error(res.error);
+      } else {
+        setResearch(res.research);
+        setGeneratedAt(new Date().toLocaleTimeString());
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Research failed";
+      setResearchError(msg);
+      toast.error(msg);
+    } finally {
       setBusy(false);
-    }, 350);
+    }
   }
 
   return (
