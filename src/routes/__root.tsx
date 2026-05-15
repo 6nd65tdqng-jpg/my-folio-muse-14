@@ -9,6 +9,13 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { Toaster } from "@/components/ui/sonner";
+import { useEffect } from "react";
+import { usePortfolio } from "@/lib/portfolio-store";
+import { useLivePrices } from "@/hooks/use-live-prices";
+import { PortfolioHeaderStats } from "@/components/portfolio-header-stats";
 
 function NotFoundComponent() {
   return (
@@ -121,7 +128,35 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <AppShell />
+      <Toaster richColors position="top-right" />
     </QueryClientProvider>
+  );
+}
+
+function AppShell() {
+  const theme = usePortfolio((s) => s.settings.theme);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === "dark") root.classList.add("dark");
+    else root.classList.remove("dark");
+  }, [theme]);
+  useLivePrices();
+
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-background text-foreground">
+        <AppSidebar />
+        <div className="flex min-h-screen flex-1 flex-col">
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-3 backdrop-blur md:px-6">
+            <SidebarTrigger />
+            <PortfolioHeaderStats />
+          </header>
+          <main className="flex-1 px-3 py-4 md:px-6 md:py-6">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
   );
 }
