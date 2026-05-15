@@ -9,6 +9,13 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { Toaster } from "@/components/ui/sonner";
+import { useEffect } from "react";
+import { usePortfolio } from "@/lib/portfolio-store";
+import { useLivePrices } from "@/hooks/use-live-prices";
+import { PortfolioHeaderStats } from "@/components/portfolio-header-stats";
 
 function NotFoundComponent() {
   return (
@@ -72,11 +79,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Lumen Folio — Portfolio Tracker" },
+      {
+        name: "description",
+        content:
+          "Track equities and crypto across currencies with live prices, P&L, and analytics.",
+      },
+      { name: "author", content: "Lumen Folio" },
+      { property: "og:title", content: "Lumen Folio — Portfolio Tracker" },
+      {
+        property: "og:description",
+        content:
+          "Professional portfolio tracking for equities and crypto with real-time analytics.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
@@ -113,7 +128,35 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <AppShell />
+      <Toaster richColors position="top-right" />
     </QueryClientProvider>
+  );
+}
+
+function AppShell() {
+  const theme = usePortfolio((s) => s.settings.theme);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === "dark") root.classList.add("dark");
+    else root.classList.remove("dark");
+  }, [theme]);
+  useLivePrices();
+
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-background text-foreground">
+        <AppSidebar />
+        <div className="flex min-h-screen flex-1 flex-col">
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-3 backdrop-blur md:px-6">
+            <SidebarTrigger />
+            <PortfolioHeaderStats />
+          </header>
+          <main className="flex-1 px-3 py-4 md:px-6 md:py-6">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
   );
 }
