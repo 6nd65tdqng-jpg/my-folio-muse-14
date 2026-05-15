@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { generateAIResearch } from "@/lib/research.functions";
 import { usePortfolio } from "@/lib/portfolio-store";
 import { holdingMetrics, fmtMoney, fmtPct, fmtNum } from "@/lib/portfolio-calc";
 import {
@@ -17,7 +19,6 @@ import {
   geographyFor,
   TIMEFRAMES,
 } from "@/lib/analytics-data";
-import { generateResearch } from "./stock-research";
 import {
   Card,
   CardContent,
