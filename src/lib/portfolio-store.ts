@@ -13,7 +13,10 @@ import {
   genSeedHistory,
 } from "./portfolio-seed";
 
+const PORTFOLIO_SEED_VERSION = 2;
+
 interface PortfolioState {
+  seedVersion: number;
   holdings: Holding[];
   transactions: Transaction[];
   history: PortfolioSnapshot[];
@@ -62,6 +65,7 @@ export const usePortfolio = create<PortfolioState>()(
       transactions: seedTx,
       history: genHistory(seedValue),
       settings: defaultSettings,
+      seedVersion: PORTFOLIO_SEED_VERSION,
       hydrated: false,
       addHolding: (h) =>
         set((s) => ({
@@ -148,6 +152,7 @@ export const usePortfolio = create<PortfolioState>()(
           holdings: d.holdings,
           transactions: d.transactions,
           history: d.history ?? [],
+          seedVersion: PORTFOLIO_SEED_VERSION,
         })),
       resetAll: () =>
         set(() => ({
@@ -155,10 +160,20 @@ export const usePortfolio = create<PortfolioState>()(
           transactions: seedTx,
           history: genHistory(seedValue),
           settings: defaultSettings,
+          seedVersion: PORTFOLIO_SEED_VERSION,
         })),
     }),
     {
       name: "portfolio-store",
+      version: PORTFOLIO_SEED_VERSION,
+      migrate: (persistedState) => ({
+        ...(persistedState as Partial<PortfolioState>),
+        holdings: seed,
+        transactions: seedTx,
+        history: genHistory(seedValue),
+        settings: defaultSettings,
+        seedVersion: PORTFOLIO_SEED_VERSION,
+      }),
       onRehydrateStorage: () => (state) => {
         if (state) state.hydrated = true;
       },
