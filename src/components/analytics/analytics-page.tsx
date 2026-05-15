@@ -214,11 +214,7 @@ export function AnalyticsPage() {
       {/* RIGHT PANEL */}
       <div className="space-y-4 lg:col-span-2">
         {selected && (
-          <ResearchPanel
-            row={selected}
-            totalValue={totalValue}
-            history={history}
-          />
+          <ResearchPanel row={selected} totalValue={totalValue} />
         )}
       </div>
     </div>
@@ -1112,7 +1108,6 @@ function ResearchPanel({
 }: {
   row: { h: Holding; m: ReturnType<typeof holdingMetrics> };
   totalValue: number;
-  history: ReturnType<typeof usePortfolio.getState>["history"];
 }) {
   const { h, m } = row;
   const weight = totalValue > 0 ? (m.valueBase / totalValue) * 100 : 0;
