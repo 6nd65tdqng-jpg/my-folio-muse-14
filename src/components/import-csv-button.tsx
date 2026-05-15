@@ -107,7 +107,7 @@ export function ImportCsvButton({
         size={size}
         onClick={() => inputRef.current?.click()}
       >
-        <Upload className="mr-2 h-4 w-4" /> Import CSV
+        <Upload className="mr-2 h-4 w-4" /> Import CSV / XLSX
       </Button>
       <input
         ref={inputRef}
