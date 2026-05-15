@@ -8,6 +8,7 @@ import {
   TrendingUp,
   CandlestickChart,
   Bitcoin,
+  Newspaper,
 } from "lucide-react";
 import {
   Sidebar,
@@ -28,6 +29,7 @@ const items = [
   { title: "Holdings", url: "/holdings", icon: Wallet },
   { title: "Transactions", url: "/transactions", icon: Receipt },
   { title: "Analytics", url: "/analytics", icon: LineChart },
+  { title: "News", url: "/news", icon: Newspaper },
   { title: "Settings", url: "/settings", icon: SettingsIcon },
 ];
 
