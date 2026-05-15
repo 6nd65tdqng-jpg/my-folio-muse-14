@@ -6,6 +6,8 @@ import {
   LineChart,
   Settings as SettingsIcon,
   TrendingUp,
+  CandlestickChart,
+  Bitcoin,
 } from "lucide-react";
 import {
   Sidebar,
@@ -21,6 +23,8 @@ import {
 
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Equities", url: "/equities", icon: CandlestickChart },
+  { title: "Crypto", url: "/crypto", icon: Bitcoin },
   { title: "Holdings", url: "/holdings", icon: Wallet },
   { title: "Transactions", url: "/transactions", icon: Receipt },
   { title: "Analytics", url: "/analytics", icon: LineChart },
