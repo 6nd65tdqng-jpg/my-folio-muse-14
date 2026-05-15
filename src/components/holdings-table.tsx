@@ -38,7 +38,13 @@ import type { Holding } from "@/lib/portfolio-types";
 
 type SortKey = "ticker" | "value" | "pnl" | "pnlPct" | "alloc" | "day";
 
-export function HoldingsTable({ compact = false }: { compact?: boolean }) {
+export function HoldingsTable({
+  compact = false,
+  filter,
+}: {
+  compact?: boolean;
+  filter?: (h: Holding) => boolean;
+}) {
   const holdings = usePortfolio((s) => s.holdings);
   const settings = usePortfolio((s) => s.settings);
   const deleteHolding = usePortfolio((s) => s.deleteHolding);
@@ -51,7 +57,8 @@ export function HoldingsTable({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
 
   const rows = useMemo(() => {
-    const enriched = holdings.map((h) => ({
+    const base = filter ? holdings.filter(filter) : holdings;
+    const enriched = base.map((h) => ({
       h,
       m: holdingMetrics(h, settings),
     }));
@@ -78,7 +85,7 @@ export function HoldingsTable({ compact = false }: { compact?: boolean }) {
       return 0;
     });
     return { rows: sorted, total };
-  }, [holdings, settings, q, sort]);
+  }, [holdings, settings, q, sort, filter]);
 
   function toggleSort(k: SortKey) {
     setSort((s) =>
