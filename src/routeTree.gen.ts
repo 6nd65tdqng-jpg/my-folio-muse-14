@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TransactionsRouteImport } from './routes/transactions'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as NewsRouteImport } from './routes/news'
 import { Route as HoldingsRouteImport } from './routes/holdings'
 import { Route as EquitiesRouteImport } from './routes/equities'
 import { Route as CryptoRouteImport } from './routes/crypto'
@@ -25,6 +26,11 @@ const TransactionsRoute = TransactionsRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewsRoute = NewsRouteImport.update({
+  id: '/news',
+  path: '/news',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HoldingsRoute = HoldingsRouteImport.update({
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/crypto': typeof CryptoRoute
   '/equities': typeof EquitiesRoute
   '/holdings': typeof HoldingsRoute
+  '/news': typeof NewsRoute
   '/settings': typeof SettingsRoute
   '/transactions': typeof TransactionsRoute
 }
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/crypto': typeof CryptoRoute
   '/equities': typeof EquitiesRoute
   '/holdings': typeof HoldingsRoute
+  '/news': typeof NewsRoute
   '/settings': typeof SettingsRoute
   '/transactions': typeof TransactionsRoute
 }
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   '/crypto': typeof CryptoRoute
   '/equities': typeof EquitiesRoute
   '/holdings': typeof HoldingsRoute
+  '/news': typeof NewsRoute
   '/settings': typeof SettingsRoute
   '/transactions': typeof TransactionsRoute
 }
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
     | '/crypto'
     | '/equities'
     | '/holdings'
+    | '/news'
     | '/settings'
     | '/transactions'
   fileRoutesByTo: FileRoutesByTo
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/crypto'
     | '/equities'
     | '/holdings'
+    | '/news'
     | '/settings'
     | '/transactions'
   id:
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/crypto'
     | '/equities'
     | '/holdings'
+    | '/news'
     | '/settings'
     | '/transactions'
   fileRoutesById: FileRoutesById
@@ -117,6 +129,7 @@ export interface RootRouteChildren {
   CryptoRoute: typeof CryptoRoute
   EquitiesRoute: typeof EquitiesRoute
   HoldingsRoute: typeof HoldingsRoute
+  NewsRoute: typeof NewsRoute
   SettingsRoute: typeof SettingsRoute
   TransactionsRoute: typeof TransactionsRoute
 }
@@ -135,6 +148,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/news': {
+      id: '/news'
+      path: '/news'
+      fullPath: '/news'
+      preLoaderRoute: typeof NewsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/holdings': {
@@ -181,6 +201,7 @@ const rootRouteChildren: RootRouteChildren = {
   CryptoRoute: CryptoRoute,
   EquitiesRoute: EquitiesRoute,
   HoldingsRoute: HoldingsRoute,
+  NewsRoute: NewsRoute,
   SettingsRoute: SettingsRoute,
   TransactionsRoute: TransactionsRoute,
 }

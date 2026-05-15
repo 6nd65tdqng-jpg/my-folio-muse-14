@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { generateAIResearch } from "@/lib/research.functions";
 import { usePortfolio } from "@/lib/portfolio-store";
 import { holdingMetrics, fmtMoney, fmtPct, fmtNum } from "@/lib/portfolio-calc";
 import {
@@ -17,7 +19,6 @@ import {
   geographyFor,
   TIMEFRAMES,
 } from "@/lib/analytics-data";
-import { generateResearch } from "./stock-research";
 import {
   Card,
   CardContent,
@@ -1137,24 +1138,45 @@ function ResearchPanel({
   const [research, setResearch] = useState<string | null>(null);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [researchError, setResearchError] = useState<string | null>(null);
+  const runAIResearch = useServerFn(generateAIResearch);
 
-  function runResearch() {
+  async function runResearch() {
     setBusy(true);
-    setTimeout(() => {
-      setResearch(
-        generateResearch(h, {
+    setResearchError(null);
+    try {
+      const res = await runAIResearch({
+        data: {
+          ticker: h.ticker,
+          name: h.name,
+          assetType: h.assetType,
+          currentPrice: h.currentPrice,
+          avgCostBasis: h.avgCostBasis,
+          quantity: h.quantity,
+          currency: h.currency,
           pnlPct: m.pnlPct,
-          weight,
+          weightPct: weight,
           vol: stats.vol,
-          mdd: stats.mdd,
-          sharpe: stats.sharpe,
           beta: stats.beta,
           return1Y: stats.return1Y,
-        }),
-      );
-      setGeneratedAt(new Date().toLocaleTimeString());
+          sharpe: stats.sharpe,
+          maxDrawdown: stats.mdd,
+        },
+      });
+      if (res.error) {
+        setResearchError(res.error);
+        toast.error(res.error);
+      } else {
+        setResearch(res.research);
+        setGeneratedAt(new Date().toLocaleTimeString());
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Research failed";
+      setResearchError(msg);
+      toast.error(msg);
+    } finally {
       setBusy(false);
-    }, 350);
+    }
   }
 
   return (
@@ -1181,6 +1203,12 @@ function ResearchPanel({
           <SmallStat label="Beta (1Y)" value={stats.beta.toFixed(2)} />
         </div>
 
+        {researchError && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-[11px] text-destructive">
+            {researchError}
+          </div>
+        )}
+
         <Button
           onClick={runResearch}
           disabled={busy}
@@ -1188,7 +1216,7 @@ function ResearchPanel({
           variant="default"
         >
           <Sparkles className="mr-2 h-4 w-4" />
-          {busy ? "Researching…" : "Research this stock"}
+          {busy ? "AI is thinking…" : "Research with AI"}
         </Button>
 
         {research && (
@@ -1226,8 +1254,7 @@ function ResearchPanel({
         )}
 
         <div className="rounded-md border border-dashed border-border bg-muted/20 p-2 text-[10px] leading-relaxed text-muted-foreground">
-          💡 This is heuristic analysis, not financial advice. Always do your
-          own research.
+          💡 AI-generated analysis, not financial advice. Always do your own research.
         </div>
       </CardContent>
     </Card>
