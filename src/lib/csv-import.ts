@@ -1,5 +1,7 @@
 import type { Holding, AssetType, Currency } from "./portfolio-types";
 
+const HEADER_KEYS = ["ticker", "quantity", "avg_cost_basis"];
+
 function parseCsv(text: string): Record<string, string>[] {
   const lines = text
     .replace(/\r\n/g, "\n")
@@ -31,10 +33,22 @@ function parseCsv(text: string): Record<string, string>[] {
     return out.map((s) => s.trim());
   }
 
-  const headers = splitLine(lines[0]).map((h) =>
+  // Skip preamble rows until we find a row containing the expected header keys.
+  let headerIdx = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const cells = splitLine(lines[i]).map((c) =>
+      c.toLowerCase().replace(/\s+/g, "_"),
+    );
+    if (HEADER_KEYS.every((k) => cells.includes(k))) {
+      headerIdx = i;
+      break;
+    }
+  }
+
+  const headers = splitLine(lines[headerIdx]).map((h) =>
     h.toLowerCase().replace(/\s+/g, "_"),
   );
-  return lines.slice(1).map((line) => {
+  return lines.slice(headerIdx + 1).map((line) => {
     const cells = splitLine(line);
     const row: Record<string, string> = {};
     headers.forEach((h, i) => (row[h] = cells[i] ?? ""));
@@ -65,12 +79,14 @@ const CRYPTO_TICKERS: Record<string, string> = {
 export interface CsvImportResult {
   holdings: Holding[];
   skipped: { row: number; reason: string }[];
+  fxRates: Partial<Record<Currency, number>>;
 }
 
 export function holdingsFromCsv(text: string): CsvImportResult {
   const rows = parseCsv(text);
   const holdings: Holding[] = [];
   const skipped: { row: number; reason: string }[] = [];
+  const fxAccum: Partial<Record<Currency, { sum: number; n: number }>> = {};
 
   rows.forEach((r, idx) => {
     const ticker = (r.ticker || r.symbol || "").trim().toUpperCase();
@@ -93,6 +109,25 @@ export function holdingsFromCsv(text: string): CsvImportResult {
         ? currencyRaw
         : "USD"
     ) as Currency;
+
+    // Infer FX rate from market_value_usd when present and currency != USD.
+    const mvUsd = num(r.market_value_usd);
+    if (
+      currency !== "USD" &&
+      isFinite(mvUsd) &&
+      mvUsd > 0 &&
+      isFinite(last) &&
+      last > 0
+    ) {
+      const localValue = quantity * last;
+      if (localValue > 0) {
+        const rate = mvUsd / localValue;
+        const acc = fxAccum[currency] ?? { sum: 0, n: 0 };
+        acc.sum += rate;
+        acc.n += 1;
+        fxAccum[currency] = acc;
+      }
+    }
 
     const cgId = CRYPTO_TICKERS[ticker];
     const isCrypto = !!cgId;
@@ -117,5 +152,10 @@ export function holdingsFromCsv(text: string): CsvImportResult {
     });
   });
 
-  return { holdings, skipped };
+  const fxRates: Partial<Record<Currency, number>> = { USD: 1 };
+  for (const [cur, acc] of Object.entries(fxAccum)) {
+    if (acc && acc.n > 0) fxRates[cur as Currency] = acc.sum / acc.n;
+  }
+
+  return { holdings, skipped, fxRates };
 }

@@ -4,6 +4,8 @@ import { Upload } from "lucide-react";
 import { holdingsFromCsv } from "@/lib/csv-import";
 import { usePortfolio } from "@/lib/portfolio-store";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
+import type { Currency } from "@/lib/portfolio-types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,10 +28,13 @@ export function ImportCsvButton({
   const importData = usePortfolio((s) => s.importData);
   const transactions = usePortfolio((s) => s.transactions);
   const history = usePortfolio((s) => s.history);
+  const settings = usePortfolio((s) => s.settings);
+  const setFxRate = usePortfolio((s) => s.setFxRate);
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<{
     holdings: Holding[];
     skipped: { row: number; reason: string }[];
+    fxRates: Partial<Record<Currency, number>>;
   } | null>(null);
   const [mode, setMode] = useState<"replace" | "merge">("replace");
   const existingHoldings = usePortfolio((s) => s.holdings);
@@ -37,20 +42,35 @@ export function ImportCsvButton({
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const isExcel = /\.(xlsx|xls)$/i.test(file.name);
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const result = holdingsFromCsv(reader.result as string);
+        let csv: string;
+        if (isExcel) {
+          const wb = XLSX.read(reader.result, { type: "array" });
+          const sheet =
+            wb.Sheets[
+              wb.SheetNames.find((n) =>
+                n.toLowerCase().includes("holding"),
+              ) ?? wb.SheetNames[0]
+            ];
+          csv = XLSX.utils.sheet_to_csv(sheet);
+        } else {
+          csv = reader.result as string;
+        }
+        const result = holdingsFromCsv(csv);
         if (result.holdings.length === 0) {
-          toast.error("No valid rows found in CSV");
+          toast.error("No valid rows found in file");
           return;
         }
         setPending(result);
       } catch (err) {
-        toast.error("CSV parse failed: " + (err as Error).message);
+        toast.error("Parse failed: " + (err as Error).message);
       }
     };
-    reader.readAsText(file);
+    if (isExcel) reader.readAsArrayBuffer(file);
+    else reader.readAsText(file);
     e.target.value = "";
   }
 
@@ -61,11 +81,22 @@ export function ImportCsvButton({
         ? pending.holdings
         : [...existingHoldings, ...pending.holdings];
     importData({ holdings: next, transactions, history });
+    // Apply inferred FX rates so totals match the source file.
+    let fxApplied = 0;
+    for (const [cur, rate] of Object.entries(pending.fxRates)) {
+      if (rate && rate > 0) {
+        setFxRate(cur as Currency, rate);
+        fxApplied++;
+      }
+    }
     toast.success(
       `Imported ${pending.holdings.length} position${
         pending.holdings.length === 1 ? "" : "s"
-      }${pending.skipped.length ? ` · ${pending.skipped.length} skipped` : ""}`,
+      }${pending.skipped.length ? ` · ${pending.skipped.length} skipped` : ""}${
+        fxApplied > 0 ? ` · FX rates updated` : ""
+      }`,
     );
+    void settings;
     setPending(null);
   }
 
@@ -76,12 +107,12 @@ export function ImportCsvButton({
         size={size}
         onClick={() => inputRef.current?.click()}
       >
-        <Upload className="mr-2 h-4 w-4" /> Import CSV
+        <Upload className="mr-2 h-4 w-4" /> Import CSV / XLSX
       </Button>
       <input
         ref={inputRef}
         type="file"
-        accept=".csv,text/csv"
+        accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         className="hidden"
         onChange={onFile}
       />
