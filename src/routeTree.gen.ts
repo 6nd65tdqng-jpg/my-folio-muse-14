@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TransactionsRouteImport } from './routes/transactions'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as HoldingsRouteImport } from './routes/holdings'
+import { Route as EquitiesRouteImport } from './routes/equities'
+import { Route as CryptoRouteImport } from './routes/crypto'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -30,6 +32,16 @@ const HoldingsRoute = HoldingsRouteImport.update({
   path: '/holdings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EquitiesRoute = EquitiesRouteImport.update({
+  id: '/equities',
+  path: '/equities',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CryptoRoute = CryptoRouteImport.update({
+  id: '/crypto',
+  path: '/crypto',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -44,6 +56,8 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
+  '/crypto': typeof CryptoRoute
+  '/equities': typeof EquitiesRoute
   '/holdings': typeof HoldingsRoute
   '/settings': typeof SettingsRoute
   '/transactions': typeof TransactionsRoute
@@ -51,6 +65,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
+  '/crypto': typeof CryptoRoute
+  '/equities': typeof EquitiesRoute
   '/holdings': typeof HoldingsRoute
   '/settings': typeof SettingsRoute
   '/transactions': typeof TransactionsRoute
@@ -59,19 +75,37 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
+  '/crypto': typeof CryptoRoute
+  '/equities': typeof EquitiesRoute
   '/holdings': typeof HoldingsRoute
   '/settings': typeof SettingsRoute
   '/transactions': typeof TransactionsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/analytics' | '/holdings' | '/settings' | '/transactions'
+  fullPaths:
+    | '/'
+    | '/analytics'
+    | '/crypto'
+    | '/equities'
+    | '/holdings'
+    | '/settings'
+    | '/transactions'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/analytics' | '/holdings' | '/settings' | '/transactions'
+  to:
+    | '/'
+    | '/analytics'
+    | '/crypto'
+    | '/equities'
+    | '/holdings'
+    | '/settings'
+    | '/transactions'
   id:
     | '__root__'
     | '/'
     | '/analytics'
+    | '/crypto'
+    | '/equities'
     | '/holdings'
     | '/settings'
     | '/transactions'
@@ -80,6 +114,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRoute
+  CryptoRoute: typeof CryptoRoute
+  EquitiesRoute: typeof EquitiesRoute
   HoldingsRoute: typeof HoldingsRoute
   SettingsRoute: typeof SettingsRoute
   TransactionsRoute: typeof TransactionsRoute
@@ -108,6 +144,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HoldingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/equities': {
+      id: '/equities'
+      path: '/equities'
+      fullPath: '/equities'
+      preLoaderRoute: typeof EquitiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crypto': {
+      id: '/crypto'
+      path: '/crypto'
+      fullPath: '/crypto'
+      preLoaderRoute: typeof CryptoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analytics': {
       id: '/analytics'
       path: '/analytics'
@@ -128,6 +178,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
+  CryptoRoute: CryptoRoute,
+  EquitiesRoute: EquitiesRoute,
   HoldingsRoute: HoldingsRoute,
   SettingsRoute: SettingsRoute,
   TransactionsRoute: TransactionsRoute,
@@ -135,3 +187,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
