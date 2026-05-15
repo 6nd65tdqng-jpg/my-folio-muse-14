@@ -16,7 +16,6 @@ import {
   sectorFor,
   geographyFor,
   TIMEFRAMES,
-  sliceLastDays,
 } from "@/lib/analytics-data";
 import { generateResearch } from "./stock-research";
 import {
@@ -1110,7 +1109,6 @@ function DrawdownChart({ holding, days }: { holding: Holding; days: number }) {
 function ResearchPanel({
   row,
   totalValue,
-  history: _history,
 }: {
   row: { h: Holding; m: ReturnType<typeof holdingMetrics> };
   totalValue: number;
