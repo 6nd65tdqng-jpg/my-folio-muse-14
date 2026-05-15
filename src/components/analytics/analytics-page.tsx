@@ -80,7 +80,6 @@ const TIMEFRAME_KEYS: Timeframe[] = ["1M", "3M", "6M", "YTD", "1Y", "5Y"];
 export function AnalyticsPage() {
   const holdings = usePortfolio((s) => s.holdings);
   const settings = usePortfolio((s) => s.settings);
-  const history = usePortfolio((s) => s.history);
 
   const enriched = useMemo(
     () =>
