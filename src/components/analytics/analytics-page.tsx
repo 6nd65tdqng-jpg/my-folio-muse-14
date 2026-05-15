@@ -1203,6 +1203,12 @@ function ResearchPanel({
           <SmallStat label="Beta (1Y)" value={stats.beta.toFixed(2)} />
         </div>
 
+        {researchError && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-[11px] text-destructive">
+            {researchError}
+          </div>
+        )}
+
         <Button
           onClick={runResearch}
           disabled={busy}
@@ -1210,7 +1216,7 @@ function ResearchPanel({
           variant="default"
         >
           <Sparkles className="mr-2 h-4 w-4" />
-          {busy ? "Researching…" : "Research this stock"}
+          {busy ? "AI is thinking…" : "Research with AI"}
         </Button>
 
         {research && (
@@ -1248,8 +1254,7 @@ function ResearchPanel({
         )}
 
         <div className="rounded-md border border-dashed border-border bg-muted/20 p-2 text-[10px] leading-relaxed text-muted-foreground">
-          💡 This is heuristic analysis, not financial advice. Always do your
-          own research.
+          💡 AI-generated analysis, not financial advice. Always do your own research.
         </div>
       </CardContent>
     </Card>
