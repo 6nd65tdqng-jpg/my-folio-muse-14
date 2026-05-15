@@ -1,0 +1,308 @@
+import { useMemo, useState } from "react";
+import { usePortfolio } from "@/lib/portfolio-store";
+import { holdingMetrics, fmtMoney, fmtPct, fmtNum } from "@/lib/portfolio-calc";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ArrowUpDown, Pencil, Plus, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { AddHoldingDialog } from "@/components/add-holding-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import type { Holding } from "@/lib/portfolio-types";
+
+type SortKey = "ticker" | "value" | "pnl" | "pnlPct" | "alloc" | "day";
+
+export function HoldingsTable({ compact = false }: { compact?: boolean }) {
+  const holdings = usePortfolio((s) => s.holdings);
+  const settings = usePortfolio((s) => s.settings);
+  const deleteHolding = usePortfolio((s) => s.deleteHolding);
+  const [q, setQ] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "value",
+    dir: "desc",
+  });
+  const [editing, setEditing] = useState<Holding | null>(null);
+  const [open, setOpen] = useState(false);
+
+  const rows = useMemo(() => {
+    const enriched = holdings.map((h) => ({
+      h,
+      m: holdingMetrics(h, settings),
+    }));
+    const total = enriched.reduce((a, r) => a + r.m.valueBase, 0);
+    const filtered = enriched.filter((r) => {
+      if (!q) return true;
+      const t = q.toLowerCase();
+      return (
+        r.h.ticker.toLowerCase().includes(t) ||
+        r.h.name.toLowerCase().includes(t) ||
+        r.h.assetType.toLowerCase().includes(t)
+      );
+    });
+    const sorted = filtered.sort((a, b) => {
+      const dir = sort.dir === "asc" ? 1 : -1;
+      const k = sort.key;
+      if (k === "ticker") return a.h.ticker.localeCompare(b.h.ticker) * dir;
+      if (k === "value") return (a.m.valueBase - b.m.valueBase) * dir;
+      if (k === "pnl") return (a.m.pnlBase - b.m.pnlBase) * dir;
+      if (k === "pnlPct") return (a.m.pnlPct - b.m.pnlPct) * dir;
+      if (k === "alloc")
+        return ((a.m.valueBase / total - b.m.valueBase / total) * dir) || 0;
+      if (k === "day") return (a.m.dayChangeBase - b.m.dayChangeBase) * dir;
+      return 0;
+    });
+    return { rows: sorted, total };
+  }, [holdings, settings, q, sort]);
+
+  function toggleSort(k: SortKey) {
+    setSort((s) =>
+      s.key === k ? { key: k, dir: s.dir === "asc" ? "desc" : "asc" } : { key: k, dir: "desc" },
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <CardTitle className="text-sm font-medium">Holdings</CardTitle>
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="Search ticker or name…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="h-9 w-full sm:w-64"
+          />
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditing(null);
+              setOpen(true);
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" /> Add
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <Th onClick={() => toggleSort("ticker")}>Asset</Th>
+                <Th align="right">Qty</Th>
+                <Th align="right">Avg Cost</Th>
+                <Th align="right">Price</Th>
+                <Th align="right" onClick={() => toggleSort("day")}>
+                  Day
+                </Th>
+                <Th align="right" onClick={() => toggleSort("value")}>
+                  Value
+                </Th>
+                <Th align="right" onClick={() => toggleSort("pnl")}>
+                  P&L
+                </Th>
+                <Th align="right" onClick={() => toggleSort("pnlPct")}>
+                  P&L %
+                </Th>
+                <Th align="right" onClick={() => toggleSort("alloc")}>
+                  Alloc
+                </Th>
+                {!compact && <Th align="right">Actions</Th>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.rows.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={compact ? 9 : 10}
+                    className="py-10 text-center text-sm text-muted-foreground"
+                  >
+                    No positions found.
+                  </TableCell>
+                </TableRow>
+              )}
+              {rows.rows.map(({ h, m }) => {
+                const alloc = rows.total > 0 ? (m.valueBase / rows.total) * 100 : 0;
+                return (
+                  <TableRow key={h.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-secondary-foreground">
+                          {h.ticker.slice(0, 2)}
+                        </div>
+                        <div className="flex flex-col leading-tight">
+                          <span className="font-medium">{h.ticker}</span>
+                          <span className="text-[11px] text-muted-foreground">
+                            {h.name}
+                          </span>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className="ml-1 hidden text-[10px] uppercase sm:inline-flex"
+                        >
+                          {h.assetType === "crypto" ? "Crypto" : h.exchange ?? "Equity"}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
+                      {fmtNum(h.quantity, 4)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
+                      {fmtMoney(h.avgCostBasis, h.currency)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
+                      {fmtMoney(h.currentPrice, h.currency)}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        "text-right font-mono tabular-nums",
+                        m.dayChange >= 0
+                          ? "text-[var(--success)]"
+                          : "text-destructive",
+                      )}
+                    >
+                      {fmtPct(m.dayChangePct)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
+                      {fmtMoney(m.valueBase, settings.baseCurrency)}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        "text-right font-mono tabular-nums",
+                        m.pnl >= 0 ? "text-[var(--success)]" : "text-destructive",
+                      )}
+                    >
+                      {fmtMoney(m.pnlBase, settings.baseCurrency)}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        "text-right font-mono tabular-nums",
+                        m.pnlPct >= 0 ? "text-[var(--success)]" : "text-destructive",
+                      )}
+                    >
+                      {fmtPct(m.pnlPct)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="font-mono text-xs tabular-nums">
+                          {alloc.toFixed(1)}%
+                        </span>
+                        <div className="h-1 w-16 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-primary"
+                            style={{ width: `${Math.min(100, alloc)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </TableCell>
+                    {!compact && (
+                      <TableCell className="text-right">
+                        <div className="inline-flex gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              setEditing(h);
+                              setOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Delete {h.ticker}?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This removes the position from your portfolio.
+                                  Transaction history is preserved.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => {
+                                    deleteHolding(h.id);
+                                    toast.success(`Removed ${h.ticker}`);
+                                  }}
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+      <AddHoldingDialog open={open} onOpenChange={setOpen} editing={editing} />
+    </Card>
+  );
+}
+
+function Th({
+  children,
+  align = "left",
+  onClick,
+}: {
+  children: React.ReactNode;
+  align?: "left" | "right";
+  onClick?: () => void;
+}) {
+  return (
+    <TableHead
+      className={cn(
+        "text-xs uppercase tracking-wider text-muted-foreground",
+        align === "right" && "text-right",
+        onClick && "cursor-pointer select-none hover:text-foreground",
+      )}
+      onClick={onClick}
+    >
+      <span className="inline-flex items-center gap-1">
+        {children}
+        {onClick && <ArrowUpDown className="h-3 w-3 opacity-60" />}
+      </span>
+    </TableHead>
+  );
+}
