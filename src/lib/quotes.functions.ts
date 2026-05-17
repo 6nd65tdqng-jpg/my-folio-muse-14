@@ -1,4 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 interface FinnhubQuote {
   c: number; // current
@@ -24,14 +27,42 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
     return { symbols: clean };
   })
   .handler(async ({ data }): Promise<{ quotes: QuoteResult[]; error?: string }> => {
+    if (data.symbols.length === 0) return { quotes: [] };
+
     const finnhubKey = process.env.FINNHUB_API_KEY;
     const twelveKey = process.env.TWELVEDATA_API_KEY;
 
-    // Route: symbols with a "." (e.g. 0700.HK) go to Twelve Data; rest to Finnhub.
-    const intlSymbols = data.symbols.filter((s) => s.includes("."));
-    const usSymbols = data.symbols.filter((s) => !s.includes("."));
-
     const results: QuoteResult[] = [];
+    const now = Date.now();
+
+    // 1. Read cache for all requested symbols
+    const { data: cached } = await supabaseAdmin
+      .from("quote_cache")
+      .select("symbol, price, prev_close, updated_at")
+      .in("symbol", data.symbols);
+
+    const cacheMap = new Map<string, { price: number; prev_close: number; updated_at: string }>();
+    for (const row of cached ?? []) {
+      cacheMap.set(row.symbol, row);
+    }
+
+    // 2. Decide which symbols are still fresh vs need a refetch
+    const staleSymbols: string[] = [];
+    for (const sym of data.symbols) {
+      const hit = cacheMap.get(sym);
+      if (hit && now - new Date(hit.updated_at).getTime() < CACHE_TTL_MS) {
+        results.push({ symbol: sym, price: hit.price, prevClose: hit.prev_close });
+      } else {
+        staleSymbols.push(sym);
+      }
+    }
+
+    if (staleSymbols.length === 0) return { quotes: results };
+
+    // Route: symbols with a "." (e.g. 0700.HK) go to Twelve Data; rest to Finnhub.
+    const intlSymbols = staleSymbols.filter((s) => s.includes("."));
+    const usSymbols = staleSymbols.filter((s) => !s.includes("."));
+    const fresh: QuoteResult[] = [];
 
     // Finnhub for US tickers
     if (finnhubKey && usSymbols.length > 0) {
@@ -49,7 +80,7 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
           }),
         );
         for (const s of settled) {
-          if (s.status === "fulfilled" && s.value) results.push(s.value);
+          if (s.status === "fulfilled" && s.value) fresh.push(s.value);
         }
       }
     }
@@ -101,7 +132,7 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
             const prev = parseFloat(q.previous_close);
             if (!isFinite(close) || close === 0) continue;
             const orig = tdToOriginal.get(key) ?? tdToOriginal.get(key.split(":")[0]) ?? key;
-            results.push({
+            fresh.push({
               symbol: orig,
               price: close,
               prevClose: isFinite(prev) ? prev : close,
@@ -113,5 +144,29 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
       }
     }
 
-    return { quotes: results };
+    // 3. Write fresh quotes back to cache (best-effort, don't block response on failure)
+    if (fresh.length > 0) {
+      const rows = fresh.map((q) => ({
+        symbol: q.symbol,
+        price: q.price,
+        prev_close: q.prevClose,
+        updated_at: new Date().toISOString(),
+      }));
+      const { error: upsertErr } = await supabaseAdmin
+        .from("quote_cache")
+        .upsert(rows, { onConflict: "symbol" });
+      if (upsertErr) console.warn("quote_cache upsert failed", upsertErr);
+    }
+
+    // 4. For any stale symbol the providers failed on, fall back to the last cached value
+    const freshSyms = new Set(fresh.map((q) => q.symbol));
+    for (const sym of staleSymbols) {
+      if (freshSyms.has(sym)) continue;
+      const hit = cacheMap.get(sym);
+      if (hit) {
+        fresh.push({ symbol: sym, price: hit.price, prevClose: hit.prev_close });
+      }
+    }
+
+    return { quotes: [...results, ...fresh] };
   });
