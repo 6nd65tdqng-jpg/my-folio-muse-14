@@ -16,9 +16,6 @@ import { useEffect } from "react";
 import { usePortfolio } from "@/lib/portfolio-store";
 import { useLivePrices } from "@/hooks/use-live-prices";
 import { PortfolioHeaderStats } from "@/components/portfolio-header-stats";
-import { BottomNav } from "@/components/bottom-nav";
-import { InstallPrompt } from "@/components/install-prompt";
-import { registerServiceWorker } from "@/lib/pwa";
 
 function NotFoundComponent() {
   return (
@@ -82,18 +79,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lumen Folio — Portfolio Tracker" },
-      { name: "theme-color", content: "#1e3a5f" },
-      { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "Lumen Folio" },
+      { title: "AM Portfolio Tracker" },
       {
         name: "description",
         content:
           "Track equities and crypto across currencies with live prices, P&L, and analytics.",
       },
       { name: "author", content: "Lumen Folio" },
-      { property: "og:title", content: "Lumen Folio — Portfolio Tracker" },
+      { property: "og:title", content: "AM Portfolio Tracker" },
       {
         property: "og:description",
         content:
@@ -102,16 +95,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "AM Portfolio Tracker" },
+      { name: "description", content: "Portfolio Pal tracks your investments, providing real-time data, analytics, and visualizations for equities and crypto." },
+      { property: "og:description", content: "Portfolio Pal tracks your investments, providing real-time data, analytics, and visualizations for equities and crypto." },
+      { name: "twitter:description", content: "Portfolio Pal tracks your investments, providing real-time data, analytics, and visualizations for equities and crypto." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/42b19f94-ddf0-47da-9917-3d75beaaf6c6/id-preview-cbbf8427--6f9341a8-2da8-472a-b265-72ec8f06da5a.lovable.app-1778999680837.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/42b19f94-ddf0-47da-9917-3d75beaaf6c6/id-preview-cbbf8427--6f9341a8-2da8-472a-b265-72ec8f06da5a.lovable.app-1778999680837.png" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
-      { rel: "icon", type: "image/png", sizes: "192x192", href: "/icon-192.png" },
-      { rel: "icon", type: "image/png", sizes: "512x512", href: "/icon-512.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -154,30 +149,20 @@ function AppShell() {
   }, [theme]);
   useLivePrices();
 
-  useEffect(() => {
-    registerServiceWorker();
-  }, []);
-
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background text-foreground">
-        <div className="hidden md:contents">
-          <AppSidebar />
-        </div>
+        <AppSidebar />
         <div className="flex min-h-screen flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-3 backdrop-blur md:px-6">
-            <div className="hidden md:block">
-              <SidebarTrigger />
-            </div>
+            <SidebarTrigger />
             <PortfolioHeaderStats />
           </header>
-          <main className="flex-1 px-3 pb-24 pt-4 md:px-6 md:pb-6 md:pt-6">
+          <main className="flex-1 px-3 py-4 md:px-6 md:py-6">
             <Outlet />
           </main>
         </div>
-        <BottomNav />
       </div>
-      <InstallPrompt />
     </SidebarProvider>
   );
 }
