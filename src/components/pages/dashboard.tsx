@@ -237,7 +237,7 @@ export function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 max-md:hidden lg:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">By Asset Class</CardTitle>
@@ -303,6 +303,65 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Mobile: swipeable trio */}
+      <Carousel opts={{ align: "start" }} className="md:hidden">
+        <CarouselContent className="-ml-3">
+          <CarouselItem className="basis-[88%] pl-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">By Asset Class</CardTitle>
+              </CardHeader>
+              <CardContent className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={allocByClass}
+                      dataKey="value"
+                      nameKey="name"
+                      outerRadius="80%"
+                      stroke="var(--card)"
+                    >
+                      {allocByClass.map((_, i) => (
+                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      content={
+                        <PieTooltip total={m.totalValue} currency={settings.baseCurrency} />
+                      }
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </CarouselItem>
+          <CarouselItem className="basis-[88%] pl-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                  <TrendingUp className="h-4 w-4 text-[var(--success)]" /> Top Gainers
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MoverList rows={gainers} currency={settings.baseCurrency} direction="up" />
+              </CardContent>
+            </Card>
+          </CarouselItem>
+          <CarouselItem className="basis-[88%] pl-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                  <TrendingDown className="h-4 w-4 text-destructive" /> Top Losers
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MoverList rows={losers} currency={settings.baseCurrency} direction="down" />
+              </CardContent>
+            </Card>
+          </CarouselItem>
+        </CarouselContent>
+      </Carousel>
 
       <Card>
         <CardHeader className="pb-2">
