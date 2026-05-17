@@ -1,5 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 
+export interface NewsEntity {
+  symbol: string;
+  sentiment_score: number;
+}
+
 export interface NewsItem {
   id: string;
   headline: string;
@@ -8,94 +13,104 @@ export interface NewsItem {
   url: string;
   image?: string;
   datetime: number; // unix seconds
-  category?: string;
-  related?: string;
+  entities: NewsEntity[];
+  /** Highest absolute sentiment across entities (positive or negative). */
+  topSentiment: number;
 }
 
-interface FinnhubNews {
-  category: string;
-  datetime: number;
-  headline: string;
-  id: number;
-  image: string;
-  related: string;
-  source: string;
-  summary: string;
+interface MarketauxEntity {
+  symbol: string;
+  type?: string;
+  sentiment_score?: number;
+}
+
+interface MarketauxArticle {
+  uuid: string;
+  title: string;
+  description: string;
   url: string;
+  source: string;
+  image_url?: string;
+  published_at: string;
+  entities?: MarketauxEntity[];
 }
 
-function ymd(d: Date): string {
-  return d.toISOString().slice(0, 10);
+interface MarketauxResponse {
+  data?: MarketauxArticle[];
+  error?: { code?: string; message?: string };
 }
 
-export const fetchMarketNews = createServerFn({ method: "POST" })
-  .inputValidator((input: { category?: string }) => ({
-    category:
-      input?.category && ["general", "forex", "crypto", "merger"].includes(input.category)
-        ? input.category
-        : "general",
-  }))
-  .handler(async ({ data }): Promise<{ items: NewsItem[]; error?: string }> => {
-    const key = process.env.FINNHUB_API_KEY;
-    if (!key) return { items: [], error: "FINNHUB_API_KEY not configured" };
-    try {
-      const url = `https://finnhub.io/api/v1/news?category=${data.category}&token=${key}`;
-      const r = await fetch(url);
-      if (!r.ok) return { items: [], error: `Finnhub ${r.status}` };
-      const raw = (await r.json()) as FinnhubNews[];
-      const items: NewsItem[] = raw.slice(0, 50).map((n) => ({
-        id: String(n.id),
-        headline: n.headline,
-        summary: n.summary,
-        source: n.source,
-        url: n.url,
-        image: n.image || undefined,
-        datetime: n.datetime,
-        category: n.category,
-        related: n.related,
+function normalize(raw: MarketauxArticle[]): NewsItem[] {
+  return raw.map((a) => {
+    const entities: NewsEntity[] = (a.entities ?? [])
+      .filter((e) => e.symbol)
+      .map((e) => ({
+        symbol: e.symbol.toUpperCase(),
+        sentiment_score: typeof e.sentiment_score === "number" ? e.sentiment_score : 0,
       }));
-      return { items };
+    const topSentiment = entities.reduce(
+      (acc, e) => (Math.abs(e.sentiment_score) > Math.abs(acc) ? e.sentiment_score : acc),
+      0,
+    );
+    return {
+      id: a.uuid,
+      headline: a.title,
+      summary: a.description ?? "",
+      source: a.source,
+      url: a.url,
+      image: a.image_url || undefined,
+      datetime: Math.floor(new Date(a.published_at).getTime() / 1000),
+      entities,
+      topSentiment,
+    };
+  });
+}
+
+export const fetchPortfolioNews = createServerFn({ method: "POST" })
+  .inputValidator((input: { symbols: string[] }) => {
+    if (!input || !Array.isArray(input.symbols)) {
+      throw new Error("symbols array required");
+    }
+    const clean = Array.from(
+      new Set(
+        input.symbols
+          .filter((s) => typeof s === "string" && s.length > 0 && s.length <= 20)
+          .map((s) => s.toUpperCase()),
+      ),
+    ).slice(0, 50);
+    return { symbols: clean };
+  })
+  .handler(async ({ data }): Promise<{ items: NewsItem[]; error?: string }> => {
+    const key = process.env.MARKETAUX_API_KEY;
+    if (!key) return { items: [], error: "MARKETAUX_API_KEY not configured" };
+    if (data.symbols.length === 0) return { items: [] };
+
+    try {
+      const url = `https://api.marketaux.com/v1/news/all?symbols=${encodeURIComponent(
+        data.symbols.join(","),
+      )}&filter_entities=true&language=en&limit=50&api_token=${key}`;
+      const r = await fetch(url);
+      if (!r.ok) return { items: [], error: `Marketaux ${r.status}` };
+      const json = (await r.json()) as MarketauxResponse;
+      if (json.error) return { items: [], error: json.error.message ?? "Marketaux error" };
+      return { items: normalize(json.data ?? []) };
     } catch (e) {
       return { items: [], error: e instanceof Error ? e.message : "fetch failed" };
     }
   });
 
-export const fetchCompanyNews = createServerFn({ method: "POST" })
-  .inputValidator((input: { symbol: string; days?: number }) => {
-    if (!input?.symbol || typeof input.symbol !== "string") {
-      throw new Error("symbol required");
-    }
-    return {
-      symbol: input.symbol.slice(0, 20),
-      days: Math.min(Math.max(input.days ?? 14, 1), 90),
-    };
-  })
-  .handler(async ({ data }): Promise<{ items: NewsItem[]; error?: string }> => {
-    const key = process.env.FINNHUB_API_KEY;
-    if (!key) return { items: [], error: "FINNHUB_API_KEY not configured" };
-    // Strip exchange suffix for HK (.HK not supported on free tier company-news)
-    const sym = data.symbol.includes(".") ? data.symbol.split(".")[0] : data.symbol;
-    const to = new Date();
-    const from = new Date(to.getTime() - data.days * 86400000);
+export const fetchGeneralMarketNews = createServerFn({ method: "POST" })
+  .inputValidator(() => ({}))
+  .handler(async (): Promise<{ items: NewsItem[]; error?: string }> => {
+    const key = process.env.MARKETAUX_API_KEY;
+    if (!key) return { items: [], error: "MARKETAUX_API_KEY not configured" };
     try {
-      const url = `https://finnhub.io/api/v1/company-news?symbol=${encodeURIComponent(
-        sym,
-      )}&from=${ymd(from)}&to=${ymd(to)}&token=${key}`;
+      const url = `https://api.marketaux.com/v1/news/all?filter_entities=true&language=en&limit=20&api_token=${key}`;
       const r = await fetch(url);
-      if (!r.ok) return { items: [], error: `Finnhub ${r.status}` };
-      const raw = (await r.json()) as FinnhubNews[];
-      const items: NewsItem[] = (raw || []).slice(0, 30).map((n) => ({
-        id: String(n.id),
-        headline: n.headline,
-        summary: n.summary,
-        source: n.source,
-        url: n.url,
-        image: n.image || undefined,
-        datetime: n.datetime,
-        category: n.category,
-        related: n.related,
-      }));
-      return { items };
+      if (!r.ok) return { items: [], error: `Marketaux ${r.status}` };
+      const json = (await r.json()) as MarketauxResponse;
+      if (json.error) return { items: [], error: json.error.message ?? "Marketaux error" };
+      return { items: normalize(json.data ?? []) };
     } catch (e) {
       return { items: [], error: e instanceof Error ? e.message : "fetch failed" };
     }
