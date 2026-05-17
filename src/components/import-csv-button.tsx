@@ -4,7 +4,7 @@ import { Upload } from "lucide-react";
 import { holdingsFromCsv } from "@/lib/csv-import";
 import { usePortfolio } from "@/lib/portfolio-store";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import type { Currency } from "@/lib/portfolio-types";
 import {
   AlertDialog,
@@ -44,18 +44,31 @@ export function ImportCsvButton({
     if (!file) return;
     const isExcel = /\.(xlsx|xls)$/i.test(file.name);
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         let csv: string;
         if (isExcel) {
-          const wb = XLSX.read(reader.result, { type: "array" });
+          const wb = new ExcelJS.Workbook();
+          await wb.xlsx.load(reader.result as ArrayBuffer);
           const sheet =
-            wb.Sheets[
-              wb.SheetNames.find((n) =>
-                n.toLowerCase().includes("holding"),
-              ) ?? wb.SheetNames[0]
-            ];
-          csv = XLSX.utils.sheet_to_csv(sheet);
+            wb.worksheets.find((w) =>
+              w.name.toLowerCase().includes("holding"),
+            ) ?? wb.worksheets[0];
+          const rows: string[] = [];
+          sheet.eachRow({ includeEmpty: false }, (row) => {
+            const vals = (row.values as unknown[]).slice(1).map((v) => {
+              if (v == null) return "";
+              const s =
+                typeof v === "object" && v !== null && "text" in (v as object)
+                  ? String((v as { text: unknown }).text ?? "")
+                  : typeof v === "object" && v !== null && "result" in (v as object)
+                    ? String((v as { result: unknown }).result ?? "")
+                    : String(v);
+              return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+            });
+            rows.push(vals.join(","));
+          });
+          csv = rows.join("\n");
         } else {
           csv = reader.result as string;
         }
