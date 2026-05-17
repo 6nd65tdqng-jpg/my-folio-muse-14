@@ -102,6 +102,43 @@ function makeDateTickFormatter(days: number) {
   };
 }
 
+function usePriceHistory(holding: Holding, days: number) {
+  const getHistory = useServerFn(fetchPriceHistory);
+  const fallback = useMemo(
+    () => generatePriceHistory(holding.ticker, holding.currentPrice, days),
+    [holding.ticker, holding.currentPrice, days],
+  );
+  const [remote, setRemote] = useState<{ key: string; points: PricePoint[]; source: string } | null>(null);
+  const key = `${holding.assetType}:${holding.ticker}:${holding.coingeckoId ?? ""}:${holding.currency}:${days}`;
+
+  useEffect(() => {
+    let cancelled = false;
+    getHistory({
+      data: {
+        symbol: holding.ticker,
+        assetType: holding.assetType,
+        days,
+        currency: holding.currency,
+        coingeckoId: holding.coingeckoId,
+      },
+    })
+      .then((res) => {
+        if (!cancelled && res.points.length >= 2) {
+          setRemote({ key, points: res.points, source: res.source });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setRemote(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [getHistory, key, holding.ticker, holding.assetType, holding.currency, holding.coingeckoId, days]);
+
+  const data = remote?.key === key ? remote.points : fallback;
+  return { data, source: remote?.key === key ? remote.source : "estimated" };
+}
+
 export function AnalyticsPage() {
   const holdings = usePortfolio((s) => s.holdings);
   const watchlist = usePortfolio((s) => s.watchlist);
