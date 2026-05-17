@@ -17,6 +17,8 @@ import { usePortfolio } from "@/lib/portfolio-store";
 import { useLivePrices } from "@/hooks/use-live-prices";
 import { PortfolioHeaderStats } from "@/components/portfolio-header-stats";
 import { BottomNav } from "@/components/bottom-nav";
+import { InstallPrompt } from "@/components/install-prompt";
+import { registerServiceWorker } from "@/lib/pwa";
 
 function NotFoundComponent() {
   return (
@@ -81,6 +83,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Lumen Folio — Portfolio Tracker" },
+      { name: "theme-color", content: "#1e3a5f" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Lumen Folio" },
       {
         name: "description",
         content:
@@ -102,6 +108,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { rel: "icon", type: "image/png", sizes: "192x192", href: "/icon-192.png" },
+      { rel: "icon", type: "image/png", sizes: "512x512", href: "/icon-512.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -144,6 +154,10 @@ function AppShell() {
   }, [theme]);
   useLivePrices();
 
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background text-foreground">
@@ -163,6 +177,7 @@ function AppShell() {
         </div>
         <BottomNav />
       </div>
+      <InstallPrompt />
     </SidebarProvider>
   );
 }
