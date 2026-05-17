@@ -837,13 +837,13 @@ function PriceChart({ holding, days }: { holding: Holding; days: number }) {
                 <ReferenceArea
                   yAxisId="price"
                   y1={cost}
-                  y2={maxP * 1.03}
+                  y2={maxP + pad}
                   fill="var(--chart-1)"
                   fillOpacity={0.06}
                 />
                 <ReferenceArea
                   yAxisId="price"
-                  y1={minP * 0.97}
+                  y1={Math.max(0, minP - pad)}
                   y2={cost}
                   fill="var(--chart-4)"
                   fillOpacity={0.06}
