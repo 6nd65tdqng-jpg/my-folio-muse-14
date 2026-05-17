@@ -851,14 +851,15 @@ function PriceTooltip({
   cost,
 }: {
   active?: boolean;
-  payload?: Array<{ value: number; payload: { volume: number } }>;
+  payload?: Array<{ dataKey?: string | number; value: number; payload: { volume: number } }>;
   label?: string;
   currency: string;
   cost: number;
 }) {
   if (!active || !payload?.length) return null;
-  const price = payload[0]?.value as number;
-  const vol = payload[0]?.payload?.volume ?? 0;
+  const pricePoint = payload.find((p) => p.dataKey === "price") ?? payload[0];
+  const price = pricePoint.value as number;
+  const vol = pricePoint.payload?.volume ?? 0;
   const fromCost = cost > 0 ? ((price - cost) / cost) * 100 : 0;
   return (
     <div className="rounded-md border border-border bg-popover px-3 py-2 text-xs shadow-md">
