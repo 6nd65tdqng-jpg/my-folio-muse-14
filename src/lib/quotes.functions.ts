@@ -222,12 +222,13 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
         if (r.ok) {
           const json = (await r.json()) as Record<string, unknown> | { close?: string };
           // Twelve Data returns a single object for 1 symbol, keyed object for many.
-          const entries: [string, any][] =
-            tdSyms.length === 1 ? [[tdSyms[0], json]] : Object.entries(json as Record<string, any>);
+          const entries: [string, unknown][] =
+            tdSyms.length === 1 ? [[tdSyms[0], json]] : Object.entries(json as Record<string, unknown>);
           for (const [key, q] of entries) {
             if (!q || typeof q !== "object") continue;
-            const close = parseFloat(q.close);
-            const prev = parseFloat(q.previous_close);
+            const quote = q as { close?: string; previous_close?: string };
+            const close = parseFloat(quote.close ?? "");
+            const prev = parseFloat(quote.previous_close ?? "");
             if (!isFinite(close) || close === 0) continue;
             const orig = tdToOriginal.get(key) ?? tdToOriginal.get(key.split(":")[0]) ?? key;
             fresh.push({
