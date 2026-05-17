@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { generateAIResearch } from "@/lib/research.functions";
+import { fetchPriceHistory } from "@/lib/quotes.functions";
 import { usePortfolio } from "@/lib/portfolio-store";
 import { holdingMetrics, fmtMoney, fmtPct, fmtNum } from "@/lib/portfolio-calc";
 import {
@@ -18,6 +19,7 @@ import {
   sectorFor,
   geographyFor,
   TIMEFRAMES,
+  type PricePoint,
 } from "@/lib/analytics-data";
 import {
   Card,
