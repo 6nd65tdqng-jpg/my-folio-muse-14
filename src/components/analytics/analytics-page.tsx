@@ -565,10 +565,12 @@ function QuickStats({
   row,
   totalValue,
   currency,
+  isWatch = false,
 }: {
   row: { h: Holding; m: ReturnType<typeof holdingMetrics> };
   totalValue: number;
   currency: string;
+  isWatch?: boolean;
 }) {
   const { h, m } = row;
   const weight = totalValue > 0 ? (m.valueBase / totalValue) * 100 : 0;
@@ -580,9 +582,16 @@ function QuickStats({
             <div className="text-lg font-semibold">{h.ticker}</div>
             <div className="text-[11px] text-muted-foreground">{h.name}</div>
           </div>
-          <Badge variant="outline" className="text-[10px] uppercase">
-            {h.assetType === "crypto" ? "Crypto" : h.exchange ?? "Equity"}
-          </Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge variant="outline" className="text-[10px] uppercase">
+              {h.assetType === "crypto" ? "Crypto" : h.exchange ?? "Equity"}
+            </Badge>
+            {isWatch && (
+              <Badge className="gap-1 bg-muted text-[10px] uppercase text-muted-foreground">
+                <Eye className="h-3 w-3" /> Watch
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -604,22 +613,32 @@ function QuickStats({
             {fmtMoney(m.dayChange, h.currency)} ({fmtPct(m.dayChangePct)})
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-y-2 text-xs">
-          <Field label="Quantity" value={fmtNum(h.quantity, 4)} />
-          <Field label="Avg Cost" value={fmtMoney(h.avgCostBasis, h.currency)} />
-          <Field
-            label="Market Value"
-            value={fmtMoney(m.valueBase, currency)}
-          />
-          <Field
-            label="P/L"
-            value={`${fmtMoney(m.pnlBase, currency)}`}
-            sub={fmtPct(m.pnlPct)}
-            tone={m.pnl >= 0 ? "up" : "down"}
-          />
-          <Field label="Weight" value={`${weight.toFixed(2)}%`} />
-          <Field label="Sector" value={sectorFor(h).sector} />
-        </div>
+        {isWatch ? (
+          <div className="grid grid-cols-2 gap-y-2 text-xs">
+            <Field label="Currency" value={h.currency} />
+            <Field label="Sector" value={sectorFor(h).sector} />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-y-2 text-xs">
+            <Field label="Quantity" value={fmtNum(h.quantity, 4)} />
+            <Field
+              label="Avg Cost"
+              value={fmtMoney(h.avgCostBasis, h.currency)}
+            />
+            <Field
+              label="Market Value"
+              value={fmtMoney(m.valueBase, currency)}
+            />
+            <Field
+              label="P/L"
+              value={`${fmtMoney(m.pnlBase, currency)}`}
+              sub={fmtPct(m.pnlPct)}
+              tone={m.pnl >= 0 ? "up" : "down"}
+            />
+            <Field label="Weight" value={`${weight.toFixed(2)}%`} />
+            <Field label="Sector" value={sectorFor(h).sector} />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
