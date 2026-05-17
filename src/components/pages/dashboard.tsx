@@ -22,7 +22,8 @@ import {
   YAxis,
 } from "recharts";
 import { cn } from "@/lib/utils";
-import { ArrowDown, ArrowUp, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowDown, ArrowUp, RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { HoldingsTable } from "@/components/holdings-table";
 import {
   Carousel,
@@ -70,11 +71,23 @@ export function Dashboard() {
   const top = [...m.rows].sort((a, b) => b.m.pnlBase - a.m.pnlBase);
   const gainers = top.slice(0, 3);
   const losers = top.slice(-3).reverse();
+  const byDay = [...m.rows]
+    .filter((r) => r.h.prevClose && r.h.prevClose > 0)
+    .sort((a, b) => b.m.dayChangePct - a.m.dayChangePct);
+  const dayGainers = byDay.slice(0, 3).filter((r) => r.m.dayChangePct > 0);
+  const dayLosers = byDay.slice(-3).reverse().filter((r) => r.m.dayChangePct < 0);
   const mdd = maxDrawdown(history);
   const ath = history.reduce((p, c) => (c.value > p ? c.value : p), 0);
 
   return (
     <div className="space-y-4">
+      <DayMoversCard
+        dayChange={m.dayChange}
+        dayChangePct={m.dayChangePct}
+        gainers={dayGainers}
+        losers={dayLosers}
+        currency={settings.baseCurrency}
+      />
       {/* KPI cards: swipeable carousel on mobile, grid on md+ */}
       <Carousel
         opts={{ align: "start", dragFree: true }}
@@ -490,6 +503,123 @@ function MoverList({
             </div>
             <div className="font-mono text-[11px] text-muted-foreground tabular-nums">
               {fmtPct(r.m.pnlPct)}
+            </div>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function DayMoversCard({
+  dayChange,
+  dayChangePct,
+  gainers,
+  losers,
+  currency,
+}: {
+  dayChange: number;
+  dayChangePct: number;
+  gainers: ReturnType<typeof portfolioMetrics>["rows"];
+  losers: ReturnType<typeof portfolioMetrics>["rows"];
+  currency: string;
+}) {
+  const up = dayChange >= 0;
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+        <div className="space-y-1">
+          <CardTitle className="text-sm font-medium">Today</CardTitle>
+          <div className="flex items-baseline gap-2">
+            <span
+              className={cn(
+                "font-mono text-2xl font-semibold tabular-nums sm:text-3xl",
+                up ? "text-[var(--success)]" : "text-destructive",
+              )}
+            >
+              {fmtMoney(dayChange, currency, { compact: true })}
+            </span>
+            <span
+              className={cn(
+                "font-mono text-sm tabular-nums",
+                up ? "text-[var(--success)]" : "text-destructive",
+              )}
+            >
+              {fmtPct(dayChangePct)}
+            </span>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => window.location.reload()}
+          aria-label="Refresh"
+          className="gap-1"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Refresh</span>
+        </Button>
+      </CardHeader>
+      <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <TrendingUp className="h-3.5 w-3.5 text-[var(--success)]" /> Top Day Gainers
+          </div>
+          <DayMoverList rows={gainers} currency={currency} direction="up" />
+        </div>
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <TrendingDown className="h-3.5 w-3.5 text-destructive" /> Top Day Losers
+          </div>
+          <DayMoverList rows={losers} currency={currency} direction="down" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DayMoverList({
+  rows,
+  currency,
+  direction,
+}: {
+  rows: ReturnType<typeof portfolioMetrics>["rows"];
+  currency: string;
+  direction: "up" | "down";
+}) {
+  if (rows.length === 0)
+    return (
+      <p className="text-sm text-muted-foreground">
+        No {direction === "up" ? "gainers" : "losers"} right now.
+      </p>
+    );
+  return (
+    <ul className="space-y-2">
+      {rows.map((r) => (
+        <li
+          key={r.h.id}
+          className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-accent/50"
+        >
+          <div className="flex flex-col leading-tight">
+            <span className="text-sm font-medium">{r.h.ticker}</span>
+            <span className="text-[11px] text-muted-foreground">{r.h.name}</span>
+          </div>
+          <div className="text-right">
+            <div
+              className={cn(
+                "font-mono text-sm font-semibold tabular-nums",
+                direction === "up" ? "text-[var(--success)]" : "text-destructive",
+              )}
+            >
+              {fmtMoney(r.m.dayChangeBase, currency, { compact: true })}
+            </div>
+            <div
+              className={cn(
+                "font-mono text-[11px] tabular-nums",
+                direction === "up" ? "text-[var(--success)]" : "text-destructive",
+              )}
+            >
+              {fmtPct(r.m.dayChangePct)}
             </div>
           </div>
         </li>
