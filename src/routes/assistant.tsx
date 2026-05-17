@@ -101,7 +101,7 @@ function AssistantPage() {
 
   return (
     <div className="flex h-[calc(100vh-3rem)] flex-col">
-      <div className="border-b px-6 py-4">
+      <div className="border-b px-3 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Sparkles className="h-4 w-4" />
@@ -116,7 +116,7 @@ function AssistantPage() {
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6">
         {messages.length === 0 ? (
           <div className="mx-auto max-w-2xl space-y-6">
             <Card className="p-6">
@@ -157,7 +157,7 @@ function AssistantPage() {
         )}
       </div>
 
-      <div className="border-t bg-background px-6 py-4">
+      <div className="border-t bg-background px-3 py-3 sm:px-6 sm:py-4">
         <form
           onSubmit={(e) => {
             e.preventDefault();
