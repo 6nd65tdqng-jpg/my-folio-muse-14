@@ -104,10 +104,10 @@ function TransactionsPage() {
                   <Th onClick={() => toggle("date")}>Date</Th>
                   <Th onClick={() => toggle("type")}>Type</Th>
                   <Th onClick={() => toggle("ticker")}>Symbol</Th>
-                  <Th align="right" onClick={() => toggle("qty")}>Qty</Th>
-                  <Th align="right" onClick={() => toggle("price")}>Price</Th>
+                  <Th align="right" className="hidden sm:table-cell" onClick={() => toggle("qty")}>Qty</Th>
+                  <Th align="right" className="hidden md:table-cell" onClick={() => toggle("price")}>Price</Th>
                   <Th align="right" onClick={() => toggle("value")}>Value</Th>
-                  <Th align="right">Realized P&L</Th>
+                  <Th align="right" className="hidden md:table-cell">Realized P&L</Th>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -135,10 +135,10 @@ function TransactionsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="font-medium">{t.ticker}</TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">
+                    <TableCell className="hidden text-right font-mono tabular-nums sm:table-cell">
                       {fmtNum(t.quantity, 4)}
                     </TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">
+                    <TableCell className="hidden text-right font-mono tabular-nums md:table-cell">
                       {fmtMoney(t.price, t.currency)}
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums">
@@ -146,7 +146,7 @@ function TransactionsPage() {
                     </TableCell>
                     <TableCell
                       className={cn(
-                        "text-right font-mono tabular-nums",
+                        "hidden text-right font-mono tabular-nums md:table-cell",
                         t.realizedPnl == null
                           ? "text-muted-foreground"
                           : t.realizedPnl >= 0
