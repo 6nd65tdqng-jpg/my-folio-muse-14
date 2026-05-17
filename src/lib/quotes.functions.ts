@@ -23,7 +23,10 @@ export interface HistoricalPricePoint {
 }
 
 const HISTORY_CACHE_TTL_MS = 30 * 60 * 1000;
-const historyCache = new Map<string, { at: number; points: HistoricalPricePoint[]; source: string }>();
+const historyCache = new Map<
+  string,
+  { at: number; points: HistoricalPricePoint[]; source: string }
+>();
 
 function compactHistory(points: HistoricalPricePoint[], days: number): HistoricalPricePoint[] {
   const byDate = new Map<string, HistoricalPricePoint>();
@@ -53,7 +56,9 @@ async function fetchYahooHistory(symbol: string, days: number): Promise<Historic
     chart?: {
       result?: Array<{
         timestamp?: number[];
-        indicators?: { quote?: Array<{ close?: Array<number | null>; volume?: Array<number | null> }> };
+        indicators?: {
+          quote?: Array<{ close?: Array<number | null>; volume?: Array<number | null> }>;
+        };
       }>;
     };
   };
@@ -89,13 +94,20 @@ async function fetchStooqHistory(symbol: string, days: number): Promise<Historic
     });
 }
 
-async function fetchCoinGeckoHistory(id: string, currency: string, days: number): Promise<HistoricalPricePoint[]> {
+async function fetchCoinGeckoHistory(
+  id: string,
+  currency: string,
+  days: number,
+): Promise<HistoricalPricePoint[]> {
   const url = `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(
     id,
   )}/market_chart?vs_currency=${encodeURIComponent(currency.toLowerCase())}&days=${Math.ceil(days)}&interval=daily`;
   const r = await fetch(url, { headers: { Accept: "application/json" } });
   if (!r.ok) throw new Error(`CoinGecko history ${id}: ${r.status}`);
-  const json = (await r.json()) as { prices?: Array<[number, number]>; total_volumes?: Array<[number, number]> };
+  const json = (await r.json()) as {
+    prices?: Array<[number, number]>;
+    total_volumes?: Array<[number, number]>;
+  };
   const volumes = new Map((json.total_volumes ?? []).map(([ts, v]) => [ts, v]));
   return (json.prices ?? []).map(([ts, price]) => ({
     date: new Date(ts).toISOString().slice(0, 10),
@@ -211,9 +223,7 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
           const json = (await r.json()) as Record<string, unknown> | { close?: string };
           // Twelve Data returns a single object for 1 symbol, keyed object for many.
           const entries: [string, any][] =
-            tdSyms.length === 1
-              ? [[tdSyms[0], json]]
-              : Object.entries(json as Record<string, any>);
+            tdSyms.length === 1 ? [[tdSyms[0], json]] : Object.entries(json as Record<string, any>);
           for (const [key, q] of entries) {
             if (!q || typeof q !== "object") continue;
             const close = parseFloat(q.close);
@@ -260,17 +270,36 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
   });
 
 export const fetchPriceHistory = createServerFn({ method: "POST" })
-  .inputValidator((input: { symbol: string; assetType?: "equity" | "crypto"; days: number; currency?: string; coingeckoId?: string }) => {
-    const symbol = String(input?.symbol ?? "").trim().toUpperCase().slice(0, 30);
-    const days = Math.min(1825, Math.max(30, Math.floor(Number(input?.days) || 365)));
-    const assetType = input?.assetType === "crypto" ? "crypto" : "equity";
-    const currency = String(input?.currency ?? "USD").trim().toLowerCase().slice(0, 10) || "usd";
-    const coingeckoId = String(input?.coingeckoId ?? "").trim().toLowerCase().slice(0, 80);
-    if (!symbol) throw new Error("symbol required");
-    return { symbol, assetType, days, currency, coingeckoId };
-  })
+  .inputValidator(
+    (input: {
+      symbol: string;
+      assetType?: "equity" | "crypto";
+      days: number;
+      currency?: string;
+      coingeckoId?: string;
+    }) => {
+      const symbol = String(input?.symbol ?? "")
+        .trim()
+        .toUpperCase()
+        .slice(0, 30);
+      const days = Math.min(1825, Math.max(30, Math.floor(Number(input?.days) || 365)));
+      const assetType = input?.assetType === "crypto" ? "crypto" : "equity";
+      const currency =
+        String(input?.currency ?? "USD")
+          .trim()
+          .toLowerCase()
+          .slice(0, 10) || "usd";
+      const coingeckoId = String(input?.coingeckoId ?? "")
+        .trim()
+        .toLowerCase()
+        .slice(0, 80);
+      if (!symbol) throw new Error("symbol required");
+      return { symbol, assetType, days, currency, coingeckoId };
+    },
+  )
   .handler(async ({ data }): Promise<{ points: HistoricalPricePoint[]; source: string }> => {
-    const lookup = data.assetType === "crypto" ? data.coingeckoId || data.symbol.toLowerCase() : data.symbol;
+    const lookup =
+      data.assetType === "crypto" ? data.coingeckoId || data.symbol.toLowerCase() : data.symbol;
     const cacheKey = `${data.assetType}:${lookup}:${data.currency}:${data.days}`;
     const hit = historyCache.get(cacheKey);
     if (hit && Date.now() - hit.at < HISTORY_CACHE_TTL_MS) {
@@ -280,9 +309,10 @@ export const fetchPriceHistory = createServerFn({ method: "POST" })
     let raw: HistoricalPricePoint[] = [];
     let source = "Yahoo";
     try {
-      raw = data.assetType === "crypto"
-        ? await fetchCoinGeckoHistory(lookup, data.currency, data.days)
-        : await fetchYahooHistory(data.symbol, data.days);
+      raw =
+        data.assetType === "crypto"
+          ? await fetchCoinGeckoHistory(lookup, data.currency, data.days)
+          : await fetchYahooHistory(data.symbol, data.days);
       source = data.assetType === "crypto" ? "CoinGecko" : "Yahoo";
     } catch {
       if (data.assetType === "equity") {

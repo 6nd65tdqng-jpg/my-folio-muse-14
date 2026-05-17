@@ -21,12 +21,7 @@ import {
   TIMEFRAMES,
   type PricePoint,
 } from "@/lib/analytics-data";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -94,8 +89,18 @@ function makeDateTickFormatter(days: number) {
     const [y, m, dd] = d.split("-");
     const monthIdx = parseInt(m, 10) - 1;
     const months = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
     ];
     const mon = months[monthIdx] ?? m;
     return longRange ? `${mon} ${y.slice(2)}` : `${mon} ${dd}`;
@@ -108,7 +113,11 @@ function usePriceHistory(holding: Holding, days: number) {
     () => generatePriceHistory(holding.ticker, holding.currentPrice, days),
     [holding.ticker, holding.currentPrice, days],
   );
-  const [remote, setRemote] = useState<{ key: string; points: PricePoint[]; source: string } | null>(null);
+  const [remote, setRemote] = useState<{
+    key: string;
+    points: PricePoint[];
+    source: string;
+  } | null>(null);
   const key = `${holding.assetType}:${holding.ticker}:${holding.coingeckoId ?? ""}:${holding.currency}:${days}`;
 
   useEffect(() => {
@@ -133,7 +142,15 @@ function usePriceHistory(holding: Holding, days: number) {
     return () => {
       cancelled = true;
     };
-  }, [getHistory, key, holding.ticker, holding.assetType, holding.currency, holding.coingeckoId, days]);
+  }, [
+    getHistory,
+    key,
+    holding.ticker,
+    holding.assetType,
+    holding.currency,
+    holding.coingeckoId,
+    days,
+  ]);
 
   const data = remote?.key === key ? remote.points : fallback;
   return { data, source: remote?.key === key ? remote.source : "estimated" };
@@ -156,31 +173,19 @@ export function AnalyticsPage() {
     () => watchlist.map((h) => ({ h, m: holdingMetrics(h, settings) })),
     [watchlist, settings],
   );
-  const combined = useMemo(
-    () => [...enriched, ...watchEnriched],
-    [enriched, watchEnriched],
-  );
+  const combined = useMemo(() => [...enriched, ...watchEnriched], [enriched, watchEnriched]);
   const totalValue = enriched.reduce((a, r) => a + r.m.valueBase, 0);
 
-  const sortedByValue = [...enriched].sort(
-    (a, b) => b.m.valueBase - a.m.valueBase,
-  );
-  const topMover = [...enriched].sort(
-    (a, b) => b.m.dayChangePct - a.m.dayChangePct,
-  );
+  const sortedByValue = [...enriched].sort((a, b) => b.m.valueBase - a.m.valueBase);
+  const topMover = [...enriched].sort((a, b) => b.m.dayChangePct - a.m.dayChangePct);
   const best = topMover[0];
   const worst = topMover[topMover.length - 1];
   const dayChange = enriched.reduce((a, r) => a + r.m.dayChangeBase, 0);
   const dayChangePct =
-    totalValue - dayChange === 0
-      ? 0
-      : (dayChange / (totalValue - dayChange)) * 100;
+    totalValue - dayChange === 0 ? 0 : (dayChange / (totalValue - dayChange)) * 100;
 
-  const [selectedId, setSelectedId] = useState<string>(
-    sortedByValue[0]?.h.id ?? "",
-  );
-  const selected =
-    combined.find((r) => r.h.id === selectedId) ?? sortedByValue[0];
+  const [selectedId, setSelectedId] = useState<string>(sortedByValue[0]?.h.id ?? "");
+  const selected = combined.find((r) => r.h.id === selectedId) ?? sortedByValue[0];
   const isWatch = !!selected && watchlist.some((w) => w.id === selected.h.id);
 
   const [chart, setChart] = useState<ChartTab>("price");
@@ -224,10 +229,7 @@ export function AnalyticsPage() {
                 <CardTitle className="text-sm font-medium">
                   {selected.h.ticker} — {selected.h.name}
                 </CardTitle>
-                <Tabs
-                  value={chart}
-                  onValueChange={(v) => setChart(v as ChartTab)}
-                >
+                <Tabs value={chart} onValueChange={(v) => setChart(v as ChartTab)}>
                   <TabsList className="h-8">
                     <TabsTrigger value="price" className="text-xs">
                       Price
@@ -249,20 +251,13 @@ export function AnalyticsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {(chart === "price" ||
-                chart === "benchmark" ||
-                chart === "drawdown") && (
+              {(chart === "price" || chart === "benchmark" || chart === "drawdown") && (
                 <TimeframePicker tf={tf} onChange={setTf} />
               )}
               <div className="mt-3">
-                {chart === "price" && (
-                  <PriceChart holding={selected.h} days={TIMEFRAMES[tf]} />
-                )}
+                {chart === "price" && <PriceChart holding={selected.h} days={TIMEFRAMES[tf]} />}
                 {chart === "benchmark" && (
-                  <BenchmarkChart
-                    holding={selected.h}
-                    days={TIMEFRAMES[tf]}
-                  />
+                  <BenchmarkChart holding={selected.h} days={TIMEFRAMES[tf]} />
                 )}
                 {chart === "heatmap" && (
                   <SectorHeatmap
@@ -272,9 +267,7 @@ export function AnalyticsPage() {
                     currency={settings.baseCurrency}
                   />
                 )}
-                {chart === "correlation" && (
-                  <CorrelationMatrix enriched={enriched} />
-                )}
+                {chart === "correlation" && <CorrelationMatrix enriched={enriched} />}
                 {chart === "drawdown" && (
                   <DrawdownChart holding={selected.h} days={TIMEFRAMES[tf]} />
                 )}
@@ -286,9 +279,7 @@ export function AnalyticsPage() {
 
       {/* RIGHT PANEL */}
       <div className="space-y-4 lg:col-span-2">
-        {selected && (
-          <ResearchPanel row={selected} totalValue={totalValue} />
-        )}
+        {selected && <ResearchPanel row={selected} totalValue={totalValue} />}
       </div>
     </div>
   );
@@ -330,11 +321,7 @@ function PortfolioOverview({
               up ? "text-[var(--success)]" : "text-destructive",
             )}
           >
-            {up ? (
-              <ArrowUp className="h-3 w-3" />
-            ) : (
-              <ArrowDown className="h-3 w-3" />
-            )}
+            {up ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
             {fmtMoney(dayChange, currency)} ({fmtPct(dayChangePct)})
             <span className="text-muted-foreground">today</span>
           </div>
@@ -403,9 +390,7 @@ function StockSelector({
       assetType: kind,
       currency: cur,
       currentPrice: 0,
-      ...(kind === "crypto" && cgId.trim()
-        ? { coingeckoId: cgId.trim().toLowerCase() }
-        : {}),
+      ...(kind === "crypto" && cgId.trim() ? { coingeckoId: cgId.trim().toLowerCase() } : {}),
     });
     toast.success(`${t} added to watchlist`);
     setTicker("");
@@ -516,13 +501,11 @@ function StockSelector({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(["USD", "EUR", "GBP", "HKD", "JPY", "CNY"] as Currency[]).map(
-                    (c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ),
-                  )}
+                  {(["USD", "EUR", "GBP", "HKD", "JPY", "CNY"] as Currency[]).map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -570,9 +553,7 @@ function StockSelector({
                   <span
                     className={cn(
                       "ml-auto font-mono text-[11px] tabular-nums",
-                      r.m.dayChangePct >= 0
-                        ? "text-[var(--success)]"
-                        : "text-destructive",
+                      r.m.dayChangePct >= 0 ? "text-[var(--success)]" : "text-destructive",
                     )}
                   >
                     {fmtPct(r.m.dayChangePct)}
@@ -615,9 +596,7 @@ function SelectorRow({
       <span
         className={cn(
           "font-mono text-[11px] tabular-nums",
-          row.m.dayChangePct >= 0
-            ? "text-[var(--success)]"
-            : "text-destructive",
+          row.m.dayChangePct >= 0 ? "text-[var(--success)]" : "text-destructive",
         )}
       >
         {fmtPct(row.m.dayChangePct)}
@@ -649,7 +628,7 @@ function QuickStats({
           </div>
           <div className="flex flex-col items-end gap-1">
             <Badge variant="outline" className="text-[10px] uppercase">
-              {h.assetType === "crypto" ? "Crypto" : h.exchange ?? "Equity"}
+              {h.assetType === "crypto" ? "Crypto" : (h.exchange ?? "Equity")}
             </Badge>
             {isWatch && (
               <Badge className="gap-1 bg-muted text-[10px] uppercase text-muted-foreground">
@@ -670,11 +649,7 @@ function QuickStats({
               m.dayChange >= 0 ? "text-[var(--success)]" : "text-destructive",
             )}
           >
-            {m.dayChange >= 0 ? (
-              <ArrowUp className="h-3 w-3" />
-            ) : (
-              <ArrowDown className="h-3 w-3" />
-            )}
+            {m.dayChange >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
             {fmtMoney(m.dayChange, h.currency)} ({fmtPct(m.dayChangePct)})
           </div>
         </div>
@@ -686,14 +661,8 @@ function QuickStats({
         ) : (
           <div className="grid grid-cols-2 gap-y-2 text-xs">
             <Field label="Quantity" value={fmtNum(h.quantity, 4)} />
-            <Field
-              label="Avg Cost"
-              value={fmtMoney(h.avgCostBasis, h.currency)}
-            />
-            <Field
-              label="Market Value"
-              value={fmtMoney(m.valueBase, currency)}
-            />
+            <Field label="Avg Cost" value={fmtMoney(h.avgCostBasis, h.currency)} />
+            <Field label="Market Value" value={fmtMoney(m.valueBase, currency)} />
             <Field
               label="P/L"
               value={`${fmtMoney(m.pnlBase, currency)}`}
@@ -722,9 +691,7 @@ function Field({
 }) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </div>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div
         className={cn(
           "font-mono text-sm tabular-nums",
@@ -741,13 +708,7 @@ function Field({
 
 /* ---------------- Main Panel ---------------- */
 
-function TimeframePicker({
-  tf,
-  onChange,
-}: {
-  tf: Timeframe;
-  onChange: (t: Timeframe) => void;
-}) {
+function TimeframePicker({ tf, onChange }: { tf: Timeframe; onChange: (t: Timeframe) => void }) {
   return (
     <div className="flex flex-wrap gap-1">
       {TIMEFRAME_KEYS.map((k) => (
@@ -771,8 +732,7 @@ function PriceChart({ holding, days }: { holding: Holding; days: number }) {
   const minP = Math.min(...data.map((d) => d.price));
   const maxP = Math.max(...data.map((d) => d.price));
   const pad = Math.max((maxP - minP) * 0.08, maxP * 0.01, 0.01);
-  const breakeven =
-    cost > 0 ? ((holding.currentPrice - cost) / cost) * 100 : 0;
+  const breakeven = cost > 0 ? ((holding.currentPrice - cost) / cost) * 100 : 0;
 
   const buyDate = cost > 0 ? holding.purchaseDate : undefined;
 
@@ -780,7 +740,9 @@ function PriceChart({ holding, days }: { holding: Holding; days: number }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between text-xs">
         <div className="text-muted-foreground">
-          {source === "estimated" ? "Estimated history shown while market history loads." : `Market history from ${source}.`}
+          {source === "estimated"
+            ? "Estimated history shown while market history loads."
+            : `Market history from ${source}.`}
         </div>
         {cost > 0 && (
           <div
@@ -803,11 +765,7 @@ function PriceChart({ holding, days }: { holding: Holding; days: number }) {
                 <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="var(--border)"
-              vertical={false}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="date"
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
@@ -819,18 +777,11 @@ function PriceChart({ holding, days }: { holding: Holding; days: number }) {
               domain={[Math.max(0, minP - pad), maxP + pad]}
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
               tickFormatter={(v) =>
-                new Intl.NumberFormat("en", { notation: "compact" }).format(
-                  v as number,
-                )
+                new Intl.NumberFormat("en", { notation: "compact" }).format(v as number)
               }
               width={60}
             />
-            <YAxis
-              yAxisId="vol"
-              orientation="right"
-              hide
-              domain={[0, "dataMax"]}
-            />
+            <YAxis yAxisId="vol" orientation="right" hide domain={[0, "dataMax"]} />
             <Tooltip content={<PriceTooltip currency={holding.currency} cost={cost} />} />
             {cost > 0 && cost <= maxP && cost >= minP && (
               <>
@@ -876,13 +827,7 @@ function PriceChart({ holding, days }: { holding: Holding; days: number }) {
                 }}
               />
             )}
-            <Bar
-              yAxisId="vol"
-              dataKey="volume"
-              fill="var(--muted)"
-              opacity={0.4}
-              barSize={2}
-            />
+            <Bar yAxisId="vol" dataKey="volume" fill="var(--muted)" opacity={0.4} barSize={2} />
             <Area
               yAxisId="price"
               type="monotone"
@@ -918,9 +863,7 @@ function PriceTooltip({
   return (
     <div className="rounded-md border border-border bg-popover px-3 py-2 text-xs shadow-md">
       <div className="mb-1 text-muted-foreground">{label}</div>
-      <div className="font-mono tabular-nums">
-        Price {fmtMoney(price, currency)}
-      </div>
+      <div className="font-mono tabular-nums">Price {fmtMoney(price, currency)}</div>
       <div className="font-mono tabular-nums text-muted-foreground">
         Vol {new Intl.NumberFormat("en", { notation: "compact" }).format(vol)}
       </div>
@@ -937,22 +880,11 @@ function PriceTooltip({
   );
 }
 
-function BenchmarkChart({
-  holding,
-  days,
-}: {
-  holding: Holding;
-  days: number;
-}) {
+function BenchmarkChart({ holding, days }: { holding: Holding; days: number }) {
   const history = usePortfolio((s) => s.history);
-  const [bench, setBench] = useState<"S&P 500" | "NASDAQ" | "MSCI World">(
-    "S&P 500",
-  );
+  const [bench, setBench] = useState<"S&P 500" | "NASDAQ" | "MSCI World">("S&P 500");
   const { data: stockData } = usePriceHistory(holding, days);
-  const benchData = useMemo(
-    () => benchmarkSeries(bench, days, history),
-    [bench, days, history],
-  );
+  const benchData = useMemo(() => benchmarkSeries(bench, days, history), [bench, days, history]);
 
   // Normalize both to 100
   const merged = useMemo(() => {
@@ -1004,11 +936,7 @@ function BenchmarkChart({
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={merged}>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="var(--border)"
-              vertical={false}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="date"
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
@@ -1037,11 +965,7 @@ function BenchmarkChart({
               }}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <ReferenceLine
-              y={100}
-              stroke="var(--muted-foreground)"
-              strokeDasharray="4 4"
-            />
+            <ReferenceLine y={100} stroke="var(--muted-foreground)" strokeDasharray="4 4" />
             <Line
               type="monotone"
               dataKey="stock"
@@ -1065,18 +989,24 @@ function BenchmarkChart({
         <TableHeader>
           <TableRow>
             <TableHead className="text-xs">Metric</TableHead>
-            <TableHead className="text-right text-xs">
-              {holding.ticker}
-            </TableHead>
+            <TableHead className="text-right text-xs">{holding.ticker}</TableHead>
             <TableHead className="text-right text-xs">{bench}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           <StatRow label="Total Return" a={fmtPct(stats.totalS)} b={fmtPct(stats.totalB)} />
           <StatRow label="Annualised Return" a={fmtPct(stats.annS)} b={fmtPct(stats.annB)} />
-          <StatRow label="Volatility" a={`${stats.volS.toFixed(1)}%`} b={`${stats.volB.toFixed(1)}%`} />
+          <StatRow
+            label="Volatility"
+            a={`${stats.volS.toFixed(1)}%`}
+            b={`${stats.volB.toFixed(1)}%`}
+          />
           <StatRow label="Sharpe Ratio" a={stats.sharpeS.toFixed(2)} b={stats.sharpeB.toFixed(2)} />
-          <StatRow label="Max Drawdown" a={`${stats.mddS.toFixed(1)}%`} b={`${stats.mddB.toFixed(1)}%`} />
+          <StatRow
+            label="Max Drawdown"
+            a={`${stats.mddS.toFixed(1)}%`}
+            b={`${stats.mddB.toFixed(1)}%`}
+          />
           <StatRow label="Beta" a={stats.beta.toFixed(2)} b={"1.00"} />
           <StatRow label="Alpha (annual)" a={fmtPct(stats.alpha)} b={"—"} />
         </TableBody>
@@ -1109,10 +1039,7 @@ function SectorHeatmap({
   const [groupBy, setGroupBy] = useState<"sector" | "class" | "geo">("sector");
 
   const groups = useMemo(() => {
-    const map = new Map<
-      string,
-      { name: string; rows: typeof enriched; value: number }
-    >();
+    const map = new Map<string, { name: string; rows: typeof enriched; value: number }>();
     for (const r of enriched) {
       const key =
         groupBy === "class"
@@ -1150,9 +1077,7 @@ function SectorHeatmap({
         {groups.map((g) => (
           <div key={g.name}>
             <div className="mb-1 flex items-center justify-between text-[11px] text-muted-foreground">
-              <span className="font-medium uppercase tracking-wider">
-                {g.name}
-              </span>
+              <span className="font-medium uppercase tracking-wider">{g.name}</span>
               <span className="font-mono tabular-nums">
                 {fmtMoney(g.value, currency, { compact: true })} ·{" "}
                 {((g.value / totalValue) * 100).toFixed(1)}%
@@ -1164,10 +1089,7 @@ function SectorHeatmap({
                 .map((r) => {
                   const pct = (r.m.valueBase / totalValue) * 100;
                   const w = Math.max(60, Math.min(280, pct * 14));
-                  const intensity = Math.min(
-                    1,
-                    Math.abs(r.m.dayChangePct) / 5,
-                  );
+                  const intensity = Math.min(1, Math.abs(r.m.dayChangePct) / 5);
                   const bg =
                     r.m.dayChangePct >= 0
                       ? `color-mix(in oklab, var(--success) ${15 + intensity * 55}%, var(--card))`
@@ -1180,9 +1102,7 @@ function SectorHeatmap({
                       style={{ width: w, background: bg }}
                       title={`${r.h.name} · ${fmtMoney(r.m.valueBase, currency)} · ${fmtPct(r.m.dayChangePct)}`}
                     >
-                      <span className="text-xs font-semibold leading-tight">
-                        {r.h.ticker}
-                      </span>
+                      <span className="text-xs font-semibold leading-tight">{r.h.ticker}</span>
                       <span className="font-mono text-[10px] tabular-nums opacity-90">
                         {pct.toFixed(1)}% · {fmtPct(r.m.dayChangePct)}
                       </span>
@@ -1203,8 +1123,7 @@ function CorrelationMatrix({
   enriched: { h: Holding; m: ReturnType<typeof holdingMetrics> }[];
 }) {
   const top = useMemo(
-    () =>
-      [...enriched].sort((a, b) => b.m.valueBase - a.m.valueBase).slice(0, 12),
+    () => [...enriched].sort((a, b) => b.m.valueBase - a.m.valueBase).slice(0, 12),
     [enriched],
   );
 
@@ -1213,22 +1132,17 @@ function CorrelationMatrix({
       top.map((r) => ({
         ticker: r.h.ticker,
         returns: dailyReturns(
-          generatePriceHistory(r.h.ticker, r.h.currentPrice, 90).map(
-            (d) => d.price,
-          ),
+          generatePriceHistory(r.h.ticker, r.h.currentPrice, 90).map((d) => d.price),
         ),
       })),
     [top],
   );
 
-  const matrix = series.map((a) =>
-    series.map((b) => pearson(a.returns, b.returns)),
-  );
+  const matrix = series.map((a) => series.map((b) => pearson(a.returns, b.returns)));
 
   function corrColor(v: number) {
     const intensity = Math.min(1, Math.abs(v));
-    if (v >= 0)
-      return `color-mix(in oklab, var(--chart-2) ${10 + intensity * 70}%, var(--card))`;
+    if (v >= 0) return `color-mix(in oklab, var(--chart-2) ${10 + intensity * 70}%, var(--card))`;
     return `color-mix(in oklab, var(--destructive) ${10 + intensity * 70}%, var(--card))`;
   }
 
@@ -1243,10 +1157,7 @@ function CorrelationMatrix({
             <tr>
               <th className="sticky left-0 z-10 bg-card p-1 text-left text-muted-foreground"></th>
               {top.map((r) => (
-                <th
-                  key={r.h.id}
-                  className="p-1 text-center font-mono text-muted-foreground"
-                >
+                <th key={r.h.id} className="p-1 text-center font-mono text-muted-foreground">
                   {r.h.ticker}
                 </th>
               ))}
@@ -1299,12 +1210,8 @@ function DrawdownChart({ holding, days }: { holding: Holding; days: number }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">
-          Underwater chart — % below all-time high
-        </span>
-        <span className="font-mono tabular-nums text-destructive">
-          Max DD: {mdd.toFixed(2)}%
-        </span>
+        <span className="text-muted-foreground">Underwater chart — % below all-time high</span>
+        <span className="font-mono tabular-nums text-destructive">Max DD: {mdd.toFixed(2)}%</span>
       </div>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
@@ -1315,11 +1222,7 @@ function DrawdownChart({ holding, days }: { holding: Holding; days: number }) {
                 <stop offset="100%" stopColor="var(--destructive)" stopOpacity={0.05} />
               </linearGradient>
             </defs>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="var(--border)"
-              vertical={false}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="date"
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
@@ -1445,7 +1348,10 @@ function ResearchPanel({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <SmallStat label="Market Cap" value={fmtMoney(stats.mcap, h.currency, { compact: true })} />
+          <SmallStat
+            label="Market Cap"
+            value={fmtMoney(stats.mcap, h.currency, { compact: true })}
+          />
           <SmallStat label="P/E Ratio" value={stats.pe.toFixed(1)} />
           <SmallStat label="EPS" value={fmtMoney(stats.eps, h.currency)} />
           <SmallStat label="Dividend Yield" value={`${stats.divYield.toFixed(2)}%`} />
@@ -1466,12 +1372,7 @@ function ResearchPanel({
           </div>
         )}
 
-        <Button
-          onClick={runResearch}
-          disabled={busy}
-          className="w-full"
-          variant="default"
-        >
+        <Button onClick={runResearch} disabled={busy} className="w-full" variant="default">
           <Sparkles className="mr-2 h-4 w-4" />
           {busy ? "AI is thinking…" : "Research with AI"}
         </Button>
