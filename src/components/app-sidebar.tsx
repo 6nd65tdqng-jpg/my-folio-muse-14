@@ -9,6 +9,7 @@ import {
   CandlestickChart,
   Bitcoin,
   Newspaper,
+  Sparkles,
 } from "lucide-react";
 import {
   Sidebar,
@@ -30,6 +31,7 @@ const items = [
   { title: "Transactions", url: "/transactions", icon: Receipt },
   { title: "Analytics", url: "/analytics", icon: LineChart },
   { title: "News", url: "/news", icon: Newspaper },
+  { title: "Assistant", url: "/assistant", icon: Sparkles },
   { title: "Settings", url: "/settings", icon: SettingsIcon },
 ];
 
