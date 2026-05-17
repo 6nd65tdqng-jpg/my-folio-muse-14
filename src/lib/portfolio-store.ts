@@ -68,22 +68,51 @@ export const usePortfolio = create<PortfolioState>()(
       seedVersion: PORTFOLIO_SEED_VERSION,
       hydrated: false,
       addHolding: (h) =>
-        set((s) => ({
-          holdings: [...s.holdings, { ...h, id: crypto.randomUUID() }],
-          transactions: [
-            ...s.transactions,
-            {
-              id: crypto.randomUUID(),
-              type: "buy",
-              ticker: h.ticker,
-              quantity: h.quantity,
-              price: h.avgCostBasis,
-              date: h.purchaseDate,
-              fees: 0,
-              currency: h.currency,
-            },
-          ],
-        })),
+        set((s) => {
+          // Merge into existing position with same ticker + currency using a
+          // weighted-average cost basis. This prevents duplicate rows and
+          // keeps avg cost mathematically correct when a user re-adds a
+          // ticker they already hold.
+          const key = `${h.ticker.toUpperCase()}|${h.currency}`;
+          const existingIdx = s.holdings.findIndex(
+            (x) => `${x.ticker.toUpperCase()}|${x.currency}` === key,
+          );
+          const buyTx = {
+            id: crypto.randomUUID(),
+            type: "buy" as const,
+            ticker: h.ticker.toUpperCase(),
+            quantity: h.quantity,
+            price: h.avgCostBasis,
+            date: h.purchaseDate,
+            fees: 0,
+            currency: h.currency,
+          };
+          if (existingIdx === -1) {
+            return {
+              holdings: [...s.holdings, { ...h, id: crypto.randomUUID() }],
+              transactions: [...s.transactions, buyTx],
+            };
+          }
+          const prev = s.holdings[existingIdx];
+          const newQty = prev.quantity + h.quantity;
+          const newAvg =
+            newQty > 0
+              ? (prev.quantity * prev.avgCostBasis +
+                  h.quantity * h.avgCostBasis) /
+                newQty
+              : prev.avgCostBasis;
+          const next = [...s.holdings];
+          next[existingIdx] = {
+            ...prev,
+            quantity: newQty,
+            avgCostBasis: newAvg,
+            currentPrice: h.currentPrice || prev.currentPrice,
+          };
+          return {
+            holdings: next,
+            transactions: [...s.transactions, buyTx],
+          };
+        }),
       updateHolding: (id, patch) =>
         set((s) => ({
           holdings: s.holdings.map((h) =>
@@ -95,23 +124,32 @@ export const usePortfolio = create<PortfolioState>()(
       addTransaction: (t) => {
         const tx: Transaction = { ...t, id: crypto.randomUUID() };
         set((s) => ({ transactions: [tx, ...s.transactions] }));
-        // adjust holdings if sell/buy
         const st = get();
         const h = st.holdings.find(
           (x) => x.ticker.toUpperCase() === t.ticker.toUpperCase(),
         );
-        if (h) {
-          if (t.type === "buy") {
-            const newQty = h.quantity + t.quantity;
-            const newAvg =
-              (h.quantity * h.avgCostBasis + t.quantity * t.price) / newQty;
-            st.updateHolding(h.id, { quantity: newQty, avgCostBasis: newAvg });
-          } else {
-            const newQty = Math.max(0, h.quantity - t.quantity);
-            const realized = (t.price - h.avgCostBasis) * t.quantity;
-            tx.realizedPnl = realized;
-            st.updateHolding(h.id, { quantity: newQty });
-          }
+        if (!h) return;
+        if (t.quantity <= 0) return;
+        if (t.type === "buy") {
+          // Weighted-average cost basis. Guard newQty > 0 (always true here
+          // since both terms are positive) and never let avg go negative.
+          const newQty = h.quantity + t.quantity;
+          const newAvg =
+            newQty > 0
+              ? (h.quantity * h.avgCostBasis + t.quantity * t.price) / newQty
+              : t.price;
+          st.updateHolding(h.id, {
+            quantity: newQty,
+            avgCostBasis: Math.max(0, newAvg),
+          });
+        } else {
+          // Sell: avg cost basis is preserved on remaining shares (it only
+          // changes on buys). Cap sell quantity at current holding to avoid
+          // negative positions, and record realized P&L on the shares sold.
+          const sellQty = Math.min(t.quantity, h.quantity);
+          const newQty = h.quantity - sellQty;
+          tx.realizedPnl = (t.price - h.avgCostBasis) * sellQty;
+          st.updateHolding(h.id, { quantity: newQty });
         }
       },
       setPrices: (prices) =>
