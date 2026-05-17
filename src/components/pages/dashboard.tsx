@@ -24,6 +24,11 @@ import {
 import { cn } from "@/lib/utils";
 import { ArrowDown, ArrowUp, TrendingDown, TrendingUp } from "lucide-react";
 import { HoldingsTable } from "@/components/holdings-table";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
 
 const CHART_COLORS = [
   "var(--chart-2)",
@@ -70,7 +75,46 @@ export function Dashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* KPI cards: swipeable carousel on mobile, grid on md+ */}
+      <Carousel
+        opts={{ align: "start", dragFree: true }}
+        className="md:hidden"
+      >
+        <CarouselContent className="-ml-3">
+          <CarouselItem className="basis-[70%] pl-3">
+            <KpiCard
+              label="Total Value"
+              value={fmtMoney(m.totalValue, settings.baseCurrency, { compact: true })}
+              sub={`Cost ${fmtMoney(m.totalCost, settings.baseCurrency, { compact: true })}`}
+            />
+          </CarouselItem>
+          <CarouselItem className="basis-[70%] pl-3">
+            <KpiCard
+              label="Unrealized P&L"
+              value={fmtMoney(m.totalPnl, settings.baseCurrency, { compact: true })}
+              sub={fmtPct(m.totalPnlPct)}
+              tone={m.totalPnl >= 0 ? "up" : "down"}
+            />
+          </CarouselItem>
+          <CarouselItem className="basis-[70%] pl-3">
+            <KpiCard
+              label="Today"
+              value={fmtMoney(m.dayChange, settings.baseCurrency, { compact: true })}
+              sub={fmtPct(m.dayChangePct)}
+              tone={m.dayChange >= 0 ? "up" : "down"}
+            />
+          </CarouselItem>
+          <CarouselItem className="basis-[70%] pl-3">
+            <KpiCard
+              label="All-Time High"
+              value={fmtMoney(ath, settings.baseCurrency, { compact: true })}
+              sub={`Drawdown ${mdd.toFixed(2)}%`}
+              tone={mdd < -1 ? "down" : "neutral"}
+            />
+          </CarouselItem>
+        </CarouselContent>
+      </Carousel>
+      <div className="hidden gap-3 md:grid md:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Total Value"
           value={fmtMoney(m.totalValue, settings.baseCurrency, { compact: true })}
