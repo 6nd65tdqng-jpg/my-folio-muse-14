@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -69,10 +70,13 @@ import {
   RefreshCw,
   TrendingUp,
   TrendingDown,
+  Eye,
+  X,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { Holding } from "@/lib/portfolio-types";
+import type { AssetType, Currency, Holding } from "@/lib/portfolio-types";
 
 type ChartTab = "price" | "benchmark" | "heatmap" | "correlation" | "drawdown";
 type Timeframe = keyof typeof TIMEFRAMES;
@@ -80,6 +84,7 @@ const TIMEFRAME_KEYS: Timeframe[] = ["1M", "3M", "6M", "YTD", "1Y", "5Y"];
 
 export function AnalyticsPage() {
   const holdings = usePortfolio((s) => s.holdings);
+  const watchlist = usePortfolio((s) => s.watchlist);
   const settings = usePortfolio((s) => s.settings);
 
   const enriched = useMemo(
@@ -89,6 +94,14 @@ export function AnalyticsPage() {
         m: holdingMetrics(h, settings),
       })),
     [holdings, settings],
+  );
+  const watchEnriched = useMemo(
+    () => watchlist.map((h) => ({ h, m: holdingMetrics(h, settings) })),
+    [watchlist, settings],
+  );
+  const combined = useMemo(
+    () => [...enriched, ...watchEnriched],
+    [enriched, watchEnriched],
   );
   const totalValue = enriched.reduce((a, r) => a + r.m.valueBase, 0);
 
@@ -110,7 +123,8 @@ export function AnalyticsPage() {
     sortedByValue[0]?.h.id ?? "",
   );
   const selected =
-    enriched.find((r) => r.h.id === selectedId) ?? sortedByValue[0];
+    combined.find((r) => r.h.id === selectedId) ?? sortedByValue[0];
+  const isWatch = !!selected && watchlist.some((w) => w.id === selected.h.id);
 
   const [chart, setChart] = useState<ChartTab>("price");
   const [tf, setTf] = useState<Timeframe>("3M");
@@ -129,6 +143,7 @@ export function AnalyticsPage() {
         />
         <StockSelector
           enriched={sortedByValue}
+          watchlist={watchEnriched}
           selectedId={selected?.h.id ?? ""}
           onSelect={setSelectedId}
           currency={settings.baseCurrency}
@@ -138,6 +153,7 @@ export function AnalyticsPage() {
             row={selected}
             totalValue={totalValue}
             currency={settings.baseCurrency}
+            isWatch={isWatch}
           />
         )}
       </div>
