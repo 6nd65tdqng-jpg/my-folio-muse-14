@@ -16,7 +16,7 @@ export const Route = createFileRoute("/assistant")({
 
 function AssistantPage() {
   return (
-    <div className="-mx-3 -my-4 h-[calc(100dvh-3.5rem)] md:-mx-6 md:-my-6">
+    <div className="-mx-3 -mb-24 -mt-4 h-[calc(100dvh-3.5rem-4rem)] md:-mx-6 md:-mb-6 md:-mt-6 md:h-[calc(100dvh-3.5rem)]">
       <AssistantChat />
     </div>
   );
