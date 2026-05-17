@@ -13,11 +13,12 @@ import {
   genSeedHistory,
 } from "./portfolio-seed";
 
-const PORTFOLIO_SEED_VERSION = 2;
+const PORTFOLIO_SEED_VERSION = 3;
 
 interface PortfolioState {
   seedVersion: number;
   holdings: Holding[];
+  watchlist: Holding[];
   transactions: Transaction[];
   history: PortfolioSnapshot[];
   settings: Settings;
@@ -25,6 +26,8 @@ interface PortfolioState {
   addHolding: (h: Omit<Holding, "id">) => void;
   updateHolding: (id: string, patch: Partial<Holding>) => void;
   deleteHolding: (id: string) => void;
+  addWatch: (w: Omit<Holding, "id" | "quantity" | "avgCostBasis" | "purchaseDate">) => void;
+  removeWatch: (id: string) => void;
   addTransaction: (t: Omit<Transaction, "id">) => void;
   setPrices: (
     prices: Record<string, { price: number; prevClose?: number }>,
@@ -36,6 +39,7 @@ interface PortfolioState {
     holdings: Holding[];
     transactions: Transaction[];
     history?: PortfolioSnapshot[];
+    watchlist?: Holding[];
   }) => void;
   resetAll: () => void;
 }
@@ -62,6 +66,7 @@ export const usePortfolio = create<PortfolioState>()(
   persist(
     (set, get) => ({
       holdings: seed,
+      watchlist: [],
       transactions: seedTx,
       history: genHistory(seedValue),
       settings: defaultSettings,
@@ -121,6 +126,27 @@ export const usePortfolio = create<PortfolioState>()(
         })),
       deleteHolding: (id) =>
         set((s) => ({ holdings: s.holdings.filter((h) => h.id !== id) })),
+      addWatch: (w) =>
+        set((s) => {
+          const key = `${w.ticker.toUpperCase()}|${w.currency}`;
+          if (
+            s.watchlist.some(
+              (x) => `${x.ticker.toUpperCase()}|${x.currency}` === key,
+            )
+          )
+            return s;
+          const entry: Holding = {
+            ...w,
+            id: crypto.randomUUID(),
+            ticker: w.ticker.toUpperCase(),
+            quantity: 0,
+            avgCostBasis: 0,
+            purchaseDate: new Date().toISOString().slice(0, 10),
+          };
+          return { watchlist: [...s.watchlist, entry] };
+        }),
+      removeWatch: (id) =>
+        set((s) => ({ watchlist: s.watchlist.filter((w) => w.id !== id) })),
       addTransaction: (t) => {
         const tx: Transaction = { ...t, id: crypto.randomUUID() };
         set((s) => ({ transactions: [tx, ...s.transactions] }));
@@ -165,6 +191,17 @@ export const usePortfolio = create<PortfolioState>()(
               lastUpdated: new Date().toISOString(),
             };
           }),
+          watchlist: s.watchlist.map((h) => {
+            const k = h.coingeckoId ?? h.ticker.toUpperCase();
+            const p = prices[k];
+            if (!p) return h;
+            return {
+              ...h,
+              currentPrice: p.price,
+              prevClose: p.prevClose ?? h.prevClose,
+              lastUpdated: new Date().toISOString(),
+            };
+          }),
         })),
       setSettings: (s) =>
         set((st) => ({ settings: { ...st.settings, ...s } })),
@@ -190,11 +227,13 @@ export const usePortfolio = create<PortfolioState>()(
           holdings: d.holdings,
           transactions: d.transactions,
           history: d.history ?? [],
+          watchlist: d.watchlist ?? [],
           seedVersion: PORTFOLIO_SEED_VERSION,
         })),
       resetAll: () =>
         set(() => ({
           holdings: seed,
+          watchlist: [],
           transactions: seedTx,
           history: genHistory(seedValue),
           settings: defaultSettings,
@@ -207,6 +246,7 @@ export const usePortfolio = create<PortfolioState>()(
       migrate: (persistedState) => ({
         ...(persistedState as Partial<PortfolioState>),
         holdings: seed,
+        watchlist: [],
         transactions: seedTx,
         history: genHistory(seedValue),
         settings: defaultSettings,
