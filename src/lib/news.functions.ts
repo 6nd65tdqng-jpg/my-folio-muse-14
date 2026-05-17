@@ -89,20 +89,37 @@ export const fetchPortfolioNews = createServerFn({ method: "POST" })
       const publishedAfter = new Date(Date.now() - 7 * 86400 * 1000)
         .toISOString()
         .slice(0, 19); // YYYY-MM-DDTHH:mm:ss
-      const url =
+      // Marketaux free tier returns max 3 articles per call. Paginate to get more.
+      const PAGES = 2; // 2 pages × 3 = 6 articles. 48 refreshes/day × 2 = 96 calls (under 100/day cap)
+      const base =
         `https://api.marketaux.com/v1/news/all` +
         `?symbols=${encodeURIComponent(data.symbols.join(","))}` +
         `&filter_entities=false` +
-        `&limit=50` +
+        `&limit=3` +
         `&published_after=${encodeURIComponent(publishedAfter)}` +
         `&language=en` +
         `&sort=published_at` +
         `&api_token=${key}`;
-      const r = await fetch(url);
-      if (!r.ok) return { items: [], error: `Marketaux ${r.status}` };
-      const json = (await r.json()) as MarketauxResponse;
-      if (json.error) return { items: [], error: json.error.message ?? "Marketaux error" };
-      return { items: normalize(json.data ?? []) };
+      const results = await Promise.all(
+        Array.from({ length: PAGES }, (_, i) =>
+          fetch(`${base}&page=${i + 1}`).then(async (r) => {
+            if (!r.ok) return null;
+            const j = (await r.json()) as MarketauxResponse;
+            return j.error ? null : j.data ?? [];
+          }).catch(() => null),
+        ),
+      );
+      const merged: MarketauxArticle[] = [];
+      const seen = new Set<string>();
+      for (const page of results) {
+        if (!page) continue;
+        for (const art of page) {
+          if (seen.has(art.uuid)) continue;
+          seen.add(art.uuid);
+          merged.push(art);
+        }
+      }
+      return { items: normalize(merged) };
     } catch (e) {
       return { items: [], error: e instanceof Error ? e.message : "fetch failed" };
     }
