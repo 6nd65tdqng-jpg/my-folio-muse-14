@@ -948,10 +948,7 @@ function BenchmarkChart({
   const [bench, setBench] = useState<"S&P 500" | "NASDAQ" | "MSCI World">(
     "S&P 500",
   );
-  const stockData = useMemo(
-    () => generatePriceHistory(holding.ticker, holding.currentPrice, days),
-    [holding.ticker, holding.currentPrice, days],
-  );
+  const { data: stockData } = usePriceHistory(holding, days);
   const benchData = useMemo(
     () => benchmarkSeries(bench, days, history),
     [bench, days, history],
@@ -1287,15 +1284,15 @@ function CorrelationMatrix({
 }
 
 function DrawdownChart({ holding, days }: { holding: Holding; days: number }) {
+  const { data: priceData } = usePriceHistory(holding, days);
   const data = useMemo(() => {
-    const series = generatePriceHistory(holding.ticker, holding.currentPrice, days);
     let peak = -Infinity;
-    return series.map((d) => {
+    return priceData.map((d) => {
       if (d.price > peak) peak = d.price;
       const dd = peak > 0 ? ((d.price - peak) / peak) * 100 : 0;
       return { date: d.date, drawdown: dd, price: d.price };
     });
-  }, [holding.ticker, holding.currentPrice, days]);
+  }, [priceData]);
 
   const mdd = data.reduce((a, b) => (b.drawdown < a ? b.drawdown : a), 0);
 
