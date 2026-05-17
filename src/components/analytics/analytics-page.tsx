@@ -775,7 +775,7 @@ function PriceChart({ holding, days }: { holding: Holding; days: number }) {
               dataKey="date"
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
               minTickGap={40}
-              tickFormatter={(d) => d.slice(5)}
+              tickFormatter={makeDateTickFormatter(days)}
             />
             <YAxis
               yAxisId="price"
@@ -979,7 +979,7 @@ function BenchmarkChart({
               dataKey="date"
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
               minTickGap={40}
-              tickFormatter={(d) => d.slice(5)}
+              tickFormatter={makeDateTickFormatter(days)}
             />
             <YAxis
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
@@ -1290,7 +1290,7 @@ function DrawdownChart({ holding, days }: { holding: Holding; days: number }) {
               dataKey="date"
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
               minTickGap={40}
-              tickFormatter={(d) => d.slice(5)}
+              tickFormatter={makeDateTickFormatter(days)}
             />
             <YAxis
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
