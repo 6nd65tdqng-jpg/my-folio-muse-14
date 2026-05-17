@@ -14,7 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      quote_cache: {
+        Row: {
+          prev_close: number
+          price: number
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          prev_close: number
+          price: number
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          prev_close?: number
+          price?: number
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
