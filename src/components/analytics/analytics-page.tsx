@@ -766,35 +766,33 @@ function TimeframePicker({
 }
 
 function PriceChart({ holding, days }: { holding: Holding; days: number }) {
-  const data = useMemo(
-    () => generatePriceHistory(holding.ticker, holding.currentPrice, days),
-    [holding.ticker, holding.currentPrice, days],
-  );
+  const { data, source } = usePriceHistory(holding, days);
   const cost = holding.avgCostBasis;
   const minP = Math.min(...data.map((d) => d.price));
   const maxP = Math.max(...data.map((d) => d.price));
+  const pad = Math.max((maxP - minP) * 0.08, maxP * 0.01, 0.01);
   const breakeven =
     cost > 0 ? ((holding.currentPrice - cost) / cost) * 100 : 0;
 
-  // Synthetic "purchase" marker at ~80% of the way through history.
-  const buyIdx = Math.floor(data.length * 0.18);
-  const buyDate = data[buyIdx]?.date;
+  const buyDate = cost > 0 ? holding.purchaseDate : undefined;
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between text-xs">
         <div className="text-muted-foreground">
-          Cost basis line shown — profit zone shaded green, loss red.
+          {source === "estimated" ? "Estimated history shown while market history loads." : `Market history from ${source}.`}
         </div>
-        <div
-          className={cn(
-            "font-mono tabular-nums",
-            breakeven >= 0 ? "text-[var(--success)]" : "text-destructive",
-          )}
-        >
-          {breakeven >= 0 ? "+" : ""}
-          {breakeven.toFixed(2)}% from cost
-        </div>
+        {cost > 0 && (
+          <div
+            className={cn(
+              "font-mono tabular-nums",
+              breakeven >= 0 ? "text-[var(--success)]" : "text-destructive",
+            )}
+          >
+            {breakeven >= 0 ? "+" : ""}
+            {breakeven.toFixed(2)}% from cost
+          </div>
+        )}
       </div>
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
@@ -818,7 +816,7 @@ function PriceChart({ holding, days }: { holding: Holding; days: number }) {
             />
             <YAxis
               yAxisId="price"
-              domain={[minP * 0.97, maxP * 1.03]}
+              domain={[Math.max(0, minP - pad), maxP + pad]}
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
               tickFormatter={(v) =>
                 new Intl.NumberFormat("en", { notation: "compact" }).format(
