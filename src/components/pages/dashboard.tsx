@@ -24,6 +24,11 @@ import {
 import { cn } from "@/lib/utils";
 import { ArrowDown, ArrowUp, TrendingDown, TrendingUp } from "lucide-react";
 import { HoldingsTable } from "@/components/holdings-table";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
 
 const CHART_COLORS = [
   "var(--chart-2)",
@@ -70,7 +75,46 @@ export function Dashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* KPI cards: swipeable carousel on mobile, grid on md+ */}
+      <Carousel
+        opts={{ align: "start", dragFree: true }}
+        className="md:hidden"
+      >
+        <CarouselContent className="-ml-3">
+          <CarouselItem className="basis-[70%] pl-3">
+            <KpiCard
+              label="Total Value"
+              value={fmtMoney(m.totalValue, settings.baseCurrency, { compact: true })}
+              sub={`Cost ${fmtMoney(m.totalCost, settings.baseCurrency, { compact: true })}`}
+            />
+          </CarouselItem>
+          <CarouselItem className="basis-[70%] pl-3">
+            <KpiCard
+              label="Unrealized P&L"
+              value={fmtMoney(m.totalPnl, settings.baseCurrency, { compact: true })}
+              sub={fmtPct(m.totalPnlPct)}
+              tone={m.totalPnl >= 0 ? "up" : "down"}
+            />
+          </CarouselItem>
+          <CarouselItem className="basis-[70%] pl-3">
+            <KpiCard
+              label="Today"
+              value={fmtMoney(m.dayChange, settings.baseCurrency, { compact: true })}
+              sub={fmtPct(m.dayChangePct)}
+              tone={m.dayChange >= 0 ? "up" : "down"}
+            />
+          </CarouselItem>
+          <CarouselItem className="basis-[70%] pl-3">
+            <KpiCard
+              label="All-Time High"
+              value={fmtMoney(ath, settings.baseCurrency, { compact: true })}
+              sub={`Drawdown ${mdd.toFixed(2)}%`}
+              tone={mdd < -1 ? "down" : "neutral"}
+            />
+          </CarouselItem>
+        </CarouselContent>
+      </Carousel>
+      <div className="hidden gap-3 md:grid md:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Total Value"
           value={fmtMoney(m.totalValue, settings.baseCurrency, { compact: true })}
@@ -193,7 +237,7 @@ export function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 max-md:hidden lg:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">By Asset Class</CardTitle>
@@ -259,6 +303,65 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Mobile: swipeable trio */}
+      <Carousel opts={{ align: "start" }} className="md:hidden">
+        <CarouselContent className="-ml-3">
+          <CarouselItem className="basis-[88%] pl-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">By Asset Class</CardTitle>
+              </CardHeader>
+              <CardContent className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={allocByClass}
+                      dataKey="value"
+                      nameKey="name"
+                      outerRadius="80%"
+                      stroke="var(--card)"
+                    >
+                      {allocByClass.map((_, i) => (
+                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      content={
+                        <PieTooltip total={m.totalValue} currency={settings.baseCurrency} />
+                      }
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </CarouselItem>
+          <CarouselItem className="basis-[88%] pl-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                  <TrendingUp className="h-4 w-4 text-[var(--success)]" /> Top Gainers
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MoverList rows={gainers} currency={settings.baseCurrency} direction="up" />
+              </CardContent>
+            </Card>
+          </CarouselItem>
+          <CarouselItem className="basis-[88%] pl-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                  <TrendingDown className="h-4 w-4 text-destructive" /> Top Losers
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MoverList rows={losers} currency={settings.baseCurrency} direction="down" />
+              </CardContent>
+            </Card>
+          </CarouselItem>
+        </CarouselContent>
+      </Carousel>
 
       <Card>
         <CardHeader className="pb-2">

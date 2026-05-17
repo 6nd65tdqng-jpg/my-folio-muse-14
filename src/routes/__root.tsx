@@ -16,6 +16,7 @@ import { useEffect } from "react";
 import { usePortfolio } from "@/lib/portfolio-store";
 import { useLivePrices } from "@/hooks/use-live-prices";
 import { PortfolioHeaderStats } from "@/components/portfolio-header-stats";
+import { BottomNav } from "@/components/bottom-nav";
 
 function NotFoundComponent() {
   return (
@@ -146,16 +147,21 @@ function AppShell() {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background text-foreground">
-        <AppSidebar />
+        <div className="hidden md:contents">
+          <AppSidebar />
+        </div>
         <div className="flex min-h-screen flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-3 backdrop-blur md:px-6">
-            <SidebarTrigger />
+            <div className="hidden md:block">
+              <SidebarTrigger />
+            </div>
             <PortfolioHeaderStats />
           </header>
-          <main className="flex-1 px-3 py-4 md:px-6 md:py-6">
+          <main className="flex-1 px-3 pb-24 pt-4 md:px-6 md:pb-6 md:pt-6">
             <Outlet />
           </main>
         </div>
+        <BottomNav />
       </div>
     </SidebarProvider>
   );
