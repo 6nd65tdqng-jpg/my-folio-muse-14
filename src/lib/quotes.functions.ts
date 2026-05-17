@@ -258,3 +258,40 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
 
     return { quotes: [...results, ...fresh] };
   });
+
+export const fetchPriceHistory = createServerFn({ method: "POST" })
+  .inputValidator((input: { symbol: string; assetType?: "equity" | "crypto"; days: number; currency?: string; coingeckoId?: string }) => {
+    const symbol = String(input?.symbol ?? "").trim().toUpperCase().slice(0, 30);
+    const days = Math.min(1825, Math.max(30, Math.floor(Number(input?.days) || 365)));
+    const assetType = input?.assetType === "crypto" ? "crypto" : "equity";
+    const currency = String(input?.currency ?? "USD").trim().toLowerCase().slice(0, 10) || "usd";
+    const coingeckoId = String(input?.coingeckoId ?? "").trim().toLowerCase().slice(0, 80);
+    if (!symbol) throw new Error("symbol required");
+    return { symbol, assetType, days, currency, coingeckoId };
+  })
+  .handler(async ({ data }): Promise<{ points: HistoricalPricePoint[]; source: string }> => {
+    const lookup = data.assetType === "crypto" ? data.coingeckoId || data.symbol.toLowerCase() : data.symbol;
+    const cacheKey = `${data.assetType}:${lookup}:${data.currency}:${data.days}`;
+    const hit = historyCache.get(cacheKey);
+    if (hit && Date.now() - hit.at < HISTORY_CACHE_TTL_MS) {
+      return { points: hit.points, source: hit.source };
+    }
+
+    let raw: HistoricalPricePoint[] = [];
+    let source = "Yahoo";
+    try {
+      raw = data.assetType === "crypto"
+        ? await fetchCoinGeckoHistory(lookup, data.currency, data.days)
+        : await fetchYahooHistory(data.symbol, data.days);
+      source = data.assetType === "crypto" ? "CoinGecko" : "Yahoo";
+    } catch {
+      if (data.assetType === "equity") {
+        raw = await fetchStooqHistory(data.symbol, data.days);
+        source = raw.length > 0 ? "Stooq" : "unavailable";
+      }
+    }
+
+    const points = compactHistory(raw, data.days);
+    historyCache.set(cacheKey, { at: Date.now(), points, source });
+    return { points, source };
+  });
