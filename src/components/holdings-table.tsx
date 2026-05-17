@@ -22,6 +22,7 @@ import { ArrowUpDown, Pencil, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AddHoldingDialog } from "@/components/add-holding-dialog";
 import { ImportCsvButton } from "@/components/import-csv-button";
+import { ExportCsvButton } from "@/components/export-csv-button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -105,6 +106,7 @@ export function HoldingsTable({
             className="h-9 w-full sm:w-64"
           />
           <ImportCsvButton />
+          <ExportCsvButton />
           <Button
             size="sm"
             onClick={() => {
