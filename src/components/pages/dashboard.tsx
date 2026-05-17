@@ -22,7 +22,8 @@ import {
   YAxis,
 } from "recharts";
 import { cn } from "@/lib/utils";
-import { ArrowDown, ArrowUp, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowDown, ArrowUp, RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { HoldingsTable } from "@/components/holdings-table";
 import {
   Carousel,
@@ -70,11 +71,23 @@ export function Dashboard() {
   const top = [...m.rows].sort((a, b) => b.m.pnlBase - a.m.pnlBase);
   const gainers = top.slice(0, 3);
   const losers = top.slice(-3).reverse();
+  const byDay = [...m.rows]
+    .filter((r) => r.h.prevClose && r.h.prevClose > 0)
+    .sort((a, b) => b.m.dayChangePct - a.m.dayChangePct);
+  const dayGainers = byDay.slice(0, 3).filter((r) => r.m.dayChangePct > 0);
+  const dayLosers = byDay.slice(-3).reverse().filter((r) => r.m.dayChangePct < 0);
   const mdd = maxDrawdown(history);
   const ath = history.reduce((p, c) => (c.value > p ? c.value : p), 0);
 
   return (
     <div className="space-y-4">
+      <DayMoversCard
+        dayChange={m.dayChange}
+        dayChangePct={m.dayChangePct}
+        gainers={dayGainers}
+        losers={dayLosers}
+        currency={settings.baseCurrency}
+      />
       {/* KPI cards: swipeable carousel on mobile, grid on md+ */}
       <Carousel
         opts={{ align: "start", dragFree: true }}
