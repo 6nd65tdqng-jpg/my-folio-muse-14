@@ -24,6 +24,7 @@ import { Plus } from "lucide-react";
 import { usePortfolio } from "@/lib/portfolio-store";
 import { toast } from "sonner";
 import type { Currency } from "@/lib/portfolio-types";
+import { SymbolAutocomplete } from "@/components/symbol-autocomplete";
 
 export function AddTransactionDialog() {
   const holdings = usePortfolio((s) => s.holdings);
@@ -34,6 +35,11 @@ export function AddTransactionDialog() {
   const [symbolMode, setSymbolMode] = useState<"existing" | "new">("existing");
   const [symbol, setSymbol] = useState("");
   const [newSymbol, setNewSymbol] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newKind, setNewKind] = useState<"equity" | "crypto">("equity");
+  const [newCurrency, setNewCurrency] = useState<Currency>("USD");
+  const [newCoingeckoId, setNewCoingeckoId] = useState<string | undefined>(undefined);
+  const [newExchange, setNewExchange] = useState<string | undefined>(undefined);
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -53,6 +59,11 @@ export function AddTransactionDialog() {
     setSymbolMode("existing");
     setSymbol("");
     setNewSymbol("");
+    setNewName("");
+    setNewKind("equity");
+    setNewCurrency("USD");
+    setNewCoingeckoId(undefined);
+    setNewExchange(undefined);
     setQuantity("");
     setPrice("");
     setDate(new Date().toISOString().slice(0, 10));
@@ -79,20 +90,21 @@ export function AddTransactionDialog() {
       );
     }
 
-    const currency: Currency = existing?.currency ?? "USD";
+    const currency: Currency = existing?.currency ?? (symbolMode === "new" ? newCurrency : "USD");
 
     if (type === "buy" && !existing) {
       // Create new holding via importData/addHolding flow
       usePortfolio.getState().addHolding({
         ticker,
-        name: ticker,
-        assetType: "equity",
+        name: newName.trim() || ticker,
+        assetType: newKind,
         quantity: qty,
         avgCostBasis: px,
         currentPrice: px,
         currency,
         purchaseDate: date,
-        exchange: broker || undefined,
+        exchange: newExchange || broker || undefined,
+        ...(newKind === "crypto" && newCoingeckoId ? { coingeckoId: newCoingeckoId } : {}),
       });
       toast.success(`Added new position ${ticker}.`);
     } else {
@@ -183,10 +195,18 @@ export function AddTransactionDialog() {
                 </SelectContent>
               </Select>
             ) : (
-              <Input
-                placeholder="e.g. NVDA"
+              <SymbolAutocomplete
                 value={newSymbol}
-                onChange={(e) => setNewSymbol(e.target.value)}
+                onChange={setNewSymbol}
+                onPick={(s) => {
+                  setNewSymbol(s.symbol);
+                  setNewName(s.name);
+                  setNewKind(s.kind);
+                  if (s.currency) setNewCurrency(s.currency as Currency);
+                  setNewCoingeckoId(s.coingeckoId);
+                  setNewExchange(s.exchange);
+                }}
+                placeholder="Search ticker or name (e.g. NVDA, bitcoin)"
               />
             )}
           </div>

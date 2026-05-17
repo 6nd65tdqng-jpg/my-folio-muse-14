@@ -20,6 +20,7 @@ import {
 import { usePortfolio } from "@/lib/portfolio-store";
 import type { Holding, AssetType, Currency } from "@/lib/portfolio-types";
 import { toast } from "sonner";
+import { SymbolAutocomplete } from "@/components/symbol-autocomplete";
 
 const empty = {
   ticker: "",
@@ -120,11 +121,21 @@ export function AddHoldingDialog({
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Ticker">
-            <Input
+            <SymbolAutocomplete
               value={form.ticker}
-              onChange={(e) => setForm({ ...form, ticker: e.target.value })}
+              onChange={(v) => setForm({ ...form, ticker: v })}
+              onPick={(s) =>
+                setForm({
+                  ...form,
+                  ticker: s.symbol,
+                  name: s.name,
+                  assetType: s.kind,
+                  currency: (s.currency as Currency) ?? form.currency,
+                  exchange: s.exchange ?? form.exchange,
+                  coingeckoId: s.coingeckoId ?? form.coingeckoId,
+                })
+              }
               placeholder="AAPL"
-              maxLength={20}
             />
           </Field>
           <Field label="Name">
