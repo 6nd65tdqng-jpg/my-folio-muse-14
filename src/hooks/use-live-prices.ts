@@ -26,8 +26,8 @@ export function useLivePrices() {
   const watchlist = usePortfolio((s) => s.watchlist);
   const setPrices = usePortfolio((s) => s.setPrices);
   const interval = usePortfolio((s) => s.settings.refreshIntervalMin);
-  const ran = useRef(false);
   const lastRun = useRef(0);
+  const lastSymbolsKey = useRef("");
 
   useEffect(() => {
     let cancelled = false;
@@ -112,8 +112,22 @@ export function useLivePrices() {
       }, nextDelayMs());
     }
 
-    if (!ran.current) {
-      ran.current = true;
+    // Build a stable key of all symbols we need quotes for. Run immediately
+    // whenever it changes — e.g. when the user adds a new watchlist entry,
+    // we must fetch its price right away or charts stay flat at $0.
+    const symbolsKey = Array.from(
+      new Set(
+        all.map((h) =>
+          h.assetType === "crypto"
+            ? `c:${h.coingeckoId ?? h.ticker.toLowerCase()}`
+            : `e:${h.ticker.toUpperCase()}`,
+        ),
+      ),
+    )
+      .sort()
+      .join("|");
+    if (symbolsKey && symbolsKey !== lastSymbolsKey.current) {
+      lastSymbolsKey.current = symbolsKey;
       run();
     }
     schedule();
