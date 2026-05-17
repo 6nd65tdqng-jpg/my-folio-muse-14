@@ -171,13 +171,15 @@ function Th({
   children,
   align = "left",
   onClick,
+  className,
 }: {
   children: React.ReactNode;
   align?: "left" | "right";
   onClick?: () => void;
+  className?: string;
 }) {
   return (
-    <TableHead className={align === "right" ? "text-right" : ""}>
+    <TableHead className={cn(align === "right" && "text-right", className)}>
       {onClick ? (
         <Button
           variant="ghost"
