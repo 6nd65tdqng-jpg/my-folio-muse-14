@@ -30,7 +30,6 @@ function AssistantPage() {
   const holdings = usePortfolio((s) => s.holdings);
   const transactions = usePortfolio((s) => s.transactions);
   const settings = usePortfolio((s) => s.settings);
-  const hydrated = usePortfolio((s) => s.hydrated);
 
   const ask = useServerFn(askAssistant);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -41,7 +40,6 @@ function AssistantPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const context = useMemo(() => {
-    if (!hydrated) return null;
     const m = portfolioMetrics(holdings, transactions, settings);
     const positions = m.rows.map(({ h, m: r }) => ({
       ticker: h.ticker,
@@ -68,7 +66,7 @@ function AssistantPage() {
       realized: m.realized,
       positions,
     } satisfies AssistantInput["context"];
-  }, [hydrated, holdings, transactions, settings]);
+  }, [holdings, transactions, settings]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
