@@ -2,6 +2,25 @@ import { useEffect, useRef } from "react";
 import { usePortfolio } from "@/lib/portfolio-store";
 import { fetchStockQuotes } from "@/lib/quotes.functions";
 
+// US equities regular session: Mon–Fri 09:30–16:00 America/New_York.
+// Uses Intl to read ET wall-clock so DST is handled automatically.
+function isUsMarketOpen(now: Date = new Date()): boolean {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const weekday = get("weekday");
+  if (weekday === "Sat" || weekday === "Sun") return false;
+  const h = parseInt(get("hour"), 10);
+  const m = parseInt(get("minute"), 10);
+  const mins = h * 60 + m;
+  return mins >= 9 * 60 + 30 && mins < 16 * 60;
+}
+
 export function useLivePrices() {
   const holdings = usePortfolio((s) => s.holdings);
   const setPrices = usePortfolio((s) => s.setPrices);
@@ -11,6 +30,19 @@ export function useLivePrices() {
 
   useEffect(() => {
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const hasEquities = holdings.some((h) => h.assetType === "equity");
+    const baseMs = Math.max(1, interval) * 60_000;
+    // Off-hours: stocks don't move — back off 6x, floor at 30 minutes.
+    // Pure-crypto portfolios always use the base interval (24/7 market).
+    const offHoursMs = Math.max(baseMs * 6, 30 * 60_000);
+
+    function nextDelayMs(): number {
+      if (!hasEquities) return baseMs;
+      return isUsMarketOpen() ? baseMs : offHoursMs;
+    }
+
     async function run() {
       lastRun.current = Date.now();
       const prices: Record<string, { price: number; prevClose?: number }> = {};
@@ -61,12 +93,20 @@ export function useLivePrices() {
       if (cancelled) return;
       if (Object.keys(prices).length > 0) setPrices(prices);
     }
+
+    function schedule() {
+      if (cancelled) return;
+      timer = setTimeout(async () => {
+        await run();
+        schedule();
+      }, nextDelayMs());
+    }
+
     if (!ran.current) {
       ran.current = true;
       run();
     }
-    const ms = Math.max(1, interval) * 60_000;
-    const t = setInterval(run, ms);
+    schedule();
 
     // Refresh when the app returns to the foreground (tab visible, window
     // focused, or pageshow from bfcache) — but throttle to avoid spamming
@@ -82,7 +122,7 @@ export function useLivePrices() {
 
     return () => {
       cancelled = true;
-      clearInterval(t);
+      if (timer) clearTimeout(timer);
       document.removeEventListener("visibilitychange", maybeRun);
       window.removeEventListener("focus", maybeRun);
       window.removeEventListener("pageshow", maybeRun);
