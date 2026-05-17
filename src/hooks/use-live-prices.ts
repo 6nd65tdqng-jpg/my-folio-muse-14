@@ -23,6 +23,7 @@ function isUsMarketOpen(now: Date = new Date()): boolean {
 
 export function useLivePrices() {
   const holdings = usePortfolio((s) => s.holdings);
+  const watchlist = usePortfolio((s) => s.watchlist);
   const setPrices = usePortfolio((s) => s.setPrices);
   const interval = usePortfolio((s) => s.settings.refreshIntervalMin);
   const ran = useRef(false);
@@ -32,7 +33,8 @@ export function useLivePrices() {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
-    const hasEquities = holdings.some((h) => h.assetType === "equity");
+    const all = [...holdings, ...watchlist];
+    const hasEquities = all.some((h) => h.assetType === "equity");
     const baseMs = Math.max(1, interval) * 60_000;
     // Off-hours: stocks don't move — back off 6x, floor at 30 minutes.
     // Pure-crypto portfolios always use the base interval (24/7 market).
@@ -48,9 +50,13 @@ export function useLivePrices() {
       const prices: Record<string, { price: number; prevClose?: number }> = {};
 
       // Crypto via CoinGecko (no key needed)
-      const ids = holdings
-        .filter((h) => h.assetType === "crypto" && h.coingeckoId)
-        .map((h) => h.coingeckoId!) as string[];
+      const ids = Array.from(
+        new Set(
+          all
+            .filter((h) => h.assetType === "crypto" && h.coingeckoId)
+            .map((h) => h.coingeckoId!),
+        ),
+      );
       if (ids.length > 0) {
         try {
           const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(
@@ -74,9 +80,13 @@ export function useLivePrices() {
       }
 
       // Stocks / ETFs via Finnhub server function
-      const stockSymbols = holdings
-        .filter((h) => h.assetType === "equity")
-        .map((h) => h.ticker.toUpperCase());
+      const stockSymbols = Array.from(
+        new Set(
+          all
+            .filter((h) => h.assetType === "equity")
+            .map((h) => h.ticker.toUpperCase()),
+        ),
+      );
       if (stockSymbols.length > 0) {
         try {
           const { quotes } = await fetchStockQuotes({
@@ -127,5 +137,5 @@ export function useLivePrices() {
       window.removeEventListener("focus", maybeRun);
       window.removeEventListener("pageshow", maybeRun);
     };
-  }, [holdings, setPrices, interval]);
+  }, [holdings, watchlist, setPrices, interval]);
 }
