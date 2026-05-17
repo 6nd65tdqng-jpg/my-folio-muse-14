@@ -1,6 +1,6 @@
 // Lumen Folio service worker — NetworkFirst for HTML, CacheFirst for static assets.
 // Keep the version bump-able to invalidate old caches on deploy.
-const VERSION = "v1";
+const VERSION = "v2";
 const HTML_CACHE = `lumen-html-${VERSION}`;
 const ASSET_CACHE = `lumen-assets-${VERSION}`;
 
@@ -18,6 +18,20 @@ self.addEventListener("activate", (event) => {
           .map((k) => caches.delete(k)),
       );
       await self.clients.claim();
+      // Force every open window (including the iOS home-screen PWA) to reload
+      // so it picks up the new JS bundle instead of running the old one from
+      // memory / bfcache.
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      for (const client of clients) {
+        try {
+          await client.navigate(client.url);
+        } catch {
+          /* navigate fails on some platforms; the next user-triggered nav will refresh */
+        }
+      }
     })(),
   );
 });
