@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -69,10 +70,13 @@ import {
   RefreshCw,
   TrendingUp,
   TrendingDown,
+  Eye,
+  X,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { Holding } from "@/lib/portfolio-types";
+import type { AssetType, Currency, Holding } from "@/lib/portfolio-types";
 
 type ChartTab = "price" | "benchmark" | "heatmap" | "correlation" | "drawdown";
 type Timeframe = keyof typeof TIMEFRAMES;
@@ -80,6 +84,7 @@ const TIMEFRAME_KEYS: Timeframe[] = ["1M", "3M", "6M", "YTD", "1Y", "5Y"];
 
 export function AnalyticsPage() {
   const holdings = usePortfolio((s) => s.holdings);
+  const watchlist = usePortfolio((s) => s.watchlist);
   const settings = usePortfolio((s) => s.settings);
 
   const enriched = useMemo(
@@ -89,6 +94,14 @@ export function AnalyticsPage() {
         m: holdingMetrics(h, settings),
       })),
     [holdings, settings],
+  );
+  const watchEnriched = useMemo(
+    () => watchlist.map((h) => ({ h, m: holdingMetrics(h, settings) })),
+    [watchlist, settings],
+  );
+  const combined = useMemo(
+    () => [...enriched, ...watchEnriched],
+    [enriched, watchEnriched],
   );
   const totalValue = enriched.reduce((a, r) => a + r.m.valueBase, 0);
 
@@ -110,7 +123,8 @@ export function AnalyticsPage() {
     sortedByValue[0]?.h.id ?? "",
   );
   const selected =
-    enriched.find((r) => r.h.id === selectedId) ?? sortedByValue[0];
+    combined.find((r) => r.h.id === selectedId) ?? sortedByValue[0];
+  const isWatch = !!selected && watchlist.some((w) => w.id === selected.h.id);
 
   const [chart, setChart] = useState<ChartTab>("price");
   const [tf, setTf] = useState<Timeframe>("3M");
@@ -129,6 +143,7 @@ export function AnalyticsPage() {
         />
         <StockSelector
           enriched={sortedByValue}
+          watchlist={watchEnriched}
           selectedId={selected?.h.id ?? ""}
           onSelect={setSelectedId}
           currency={settings.baseCurrency}
@@ -138,6 +153,7 @@ export function AnalyticsPage() {
             row={selected}
             totalValue={totalValue}
             currency={settings.baseCurrency}
+            isWatch={isWatch}
           />
         )}
       </div>
@@ -295,11 +311,13 @@ function PortfolioOverview({
 
 function StockSelector({
   enriched,
+  watchlist,
   selectedId,
   onSelect,
   currency,
 }: {
   enriched: { h: Holding; m: { valueBase: number; dayChangePct: number } }[];
+  watchlist: { h: Holding; m: { valueBase: number; dayChangePct: number } }[];
   selectedId: string;
   onSelect: (id: string) => void;
   currency: string;
@@ -307,12 +325,53 @@ function StockSelector({
   const top = enriched.slice(0, 5);
   const stocks = enriched.filter((r) => r.h.assetType === "equity");
   const crypto = enriched.filter((r) => r.h.assetType === "crypto");
+  const addWatch = usePortfolio((s) => s.addWatch);
+  const removeWatch = usePortfolio((s) => s.removeWatch);
+  const [showAdd, setShowAdd] = useState(false);
+  const [ticker, setTicker] = useState("");
+  const [name, setName] = useState("");
+  const [kind, setKind] = useState<AssetType>("equity");
+  const [cur, setCur] = useState<Currency>("USD");
+  const [cgId, setCgId] = useState("");
+
+  function submit() {
+    const t = ticker.trim().toUpperCase();
+    if (!t) {
+      toast.error("Ticker is required");
+      return;
+    }
+    addWatch({
+      ticker: t,
+      name: name.trim() || t,
+      assetType: kind,
+      currency: cur,
+      currentPrice: 0,
+      ...(kind === "crypto" && cgId.trim()
+        ? { coingeckoId: cgId.trim().toLowerCase() }
+        : {}),
+    });
+    toast.success(`${t} added to watchlist`);
+    setTicker("");
+    setName("");
+    setCgId("");
+    setShowAdd(false);
+    onSelect(t); // best-effort; selector finds by id, harmless if mismatched
+  }
+
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground">
           Select Holding
         </CardTitle>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 gap-1 px-2 text-[11px]"
+          onClick={() => setShowAdd((v) => !v)}
+        >
+          <Plus className="h-3 w-3" /> Watch
+        </Button>
       </CardHeader>
       <CardContent>
         <Select value={selectedId} onValueChange={onSelect}>
@@ -348,8 +407,128 @@ function StockSelector({
                 ))}
               </SelectGroup>
             )}
+            {watchlist.length > 0 && (
+              <SelectGroup>
+                <SelectLabel>Watchlist</SelectLabel>
+                {watchlist.map((r) => (
+                  <SelectItem key={`wl-${r.h.id}`} value={r.h.id}>
+                    <SelectorRow row={r} currency={currency} />
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
           </SelectContent>
         </Select>
+
+        {showAdd && (
+          <div className="mt-3 space-y-2 rounded-md border border-border bg-muted/30 p-2">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Ticker (e.g. NVDA)"
+                value={ticker}
+                onChange={(e) => setTicker(e.target.value)}
+                className="h-8 text-xs"
+              />
+              <Input
+                placeholder="Name (optional)"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-8 text-xs"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Select value={kind} onValueChange={(v) => setKind(v as AssetType)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="equity">Equity / ETF</SelectItem>
+                  <SelectItem value="crypto">Crypto</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={cur} onValueChange={(v) => setCur(v as Currency)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(["USD", "EUR", "GBP", "HKD", "JPY", "CNY"] as Currency[]).map(
+                    (c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ),
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            {kind === "crypto" && (
+              <Input
+                placeholder="CoinGecko ID (e.g. bitcoin)"
+                value={cgId}
+                onChange={(e) => setCgId(e.target.value)}
+                className="h-8 text-xs"
+              />
+            )}
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-[11px]"
+                onClick={() => setShowAdd(false)}
+              >
+                Cancel
+              </Button>
+              <Button size="sm" className="h-7 text-[11px]" onClick={submit}>
+                Add
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {watchlist.length > 0 && (
+          <div className="mt-3 space-y-1">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Watchlist
+            </div>
+            {watchlist.map((r) => (
+              <div
+                key={`wlrow-${r.h.id}`}
+                className="flex items-center justify-between rounded-md px-2 py-1 text-xs hover:bg-accent/50"
+              >
+                <button
+                  type="button"
+                  className="flex flex-1 items-center gap-2 text-left"
+                  onClick={() => onSelect(r.h.id)}
+                >
+                  <Eye className="h-3 w-3 text-muted-foreground" />
+                  <span className="font-medium">{r.h.ticker}</span>
+                  <span
+                    className={cn(
+                      "ml-auto font-mono text-[11px] tabular-nums",
+                      r.m.dayChangePct >= 0
+                        ? "text-[var(--success)]"
+                        : "text-destructive",
+                    )}
+                  >
+                    {fmtPct(r.m.dayChangePct)}
+                  </span>
+                </button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                  onClick={() => {
+                    removeWatch(r.h.id);
+                    toast.success(`Removed ${r.h.ticker} from watchlist`);
+                  }}
+                  aria-label={`Remove ${r.h.ticker}`}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -386,10 +565,12 @@ function QuickStats({
   row,
   totalValue,
   currency,
+  isWatch = false,
 }: {
   row: { h: Holding; m: ReturnType<typeof holdingMetrics> };
   totalValue: number;
   currency: string;
+  isWatch?: boolean;
 }) {
   const { h, m } = row;
   const weight = totalValue > 0 ? (m.valueBase / totalValue) * 100 : 0;
@@ -401,9 +582,16 @@ function QuickStats({
             <div className="text-lg font-semibold">{h.ticker}</div>
             <div className="text-[11px] text-muted-foreground">{h.name}</div>
           </div>
-          <Badge variant="outline" className="text-[10px] uppercase">
-            {h.assetType === "crypto" ? "Crypto" : h.exchange ?? "Equity"}
-          </Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge variant="outline" className="text-[10px] uppercase">
+              {h.assetType === "crypto" ? "Crypto" : h.exchange ?? "Equity"}
+            </Badge>
+            {isWatch && (
+              <Badge className="gap-1 bg-muted text-[10px] uppercase text-muted-foreground">
+                <Eye className="h-3 w-3" /> Watch
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -425,22 +613,32 @@ function QuickStats({
             {fmtMoney(m.dayChange, h.currency)} ({fmtPct(m.dayChangePct)})
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-y-2 text-xs">
-          <Field label="Quantity" value={fmtNum(h.quantity, 4)} />
-          <Field label="Avg Cost" value={fmtMoney(h.avgCostBasis, h.currency)} />
-          <Field
-            label="Market Value"
-            value={fmtMoney(m.valueBase, currency)}
-          />
-          <Field
-            label="P/L"
-            value={`${fmtMoney(m.pnlBase, currency)}`}
-            sub={fmtPct(m.pnlPct)}
-            tone={m.pnl >= 0 ? "up" : "down"}
-          />
-          <Field label="Weight" value={`${weight.toFixed(2)}%`} />
-          <Field label="Sector" value={sectorFor(h).sector} />
-        </div>
+        {isWatch ? (
+          <div className="grid grid-cols-2 gap-y-2 text-xs">
+            <Field label="Currency" value={h.currency} />
+            <Field label="Sector" value={sectorFor(h).sector} />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-y-2 text-xs">
+            <Field label="Quantity" value={fmtNum(h.quantity, 4)} />
+            <Field
+              label="Avg Cost"
+              value={fmtMoney(h.avgCostBasis, h.currency)}
+            />
+            <Field
+              label="Market Value"
+              value={fmtMoney(m.valueBase, currency)}
+            />
+            <Field
+              label="P/L"
+              value={`${fmtMoney(m.pnlBase, currency)}`}
+              sub={fmtPct(m.pnlPct)}
+              tone={m.pnl >= 0 ? "up" : "down"}
+            />
+            <Field label="Weight" value={`${weight.toFixed(2)}%`} />
+            <Field label="Sector" value={sectorFor(h).sector} />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
