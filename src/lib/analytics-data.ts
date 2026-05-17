@@ -25,36 +25,66 @@ export interface PricePoint {
   volume: number;
 }
 
-/** Generate synthetic OHLC-ish daily price history ending at currentPrice. */
-export function generatePriceHistory(
-  ticker: string,
-  currentPrice: number,
-  days: number,
-): PricePoint[] {
+// Longest window we ever chart (5Y ≈ 1825 days). Generate once per ticker so
+// shorter timeframes are consistent tails of the same series — switching
+// 1M → 3M → 1Y must show the same recent prices, not a fresh random walk.
+const MAX_HISTORY_DAYS = 1825;
+
+interface FullHistory {
+  priceKey: number;
+  series: PricePoint[];
+}
+const historyCache = new Map<string, FullHistory>();
+
+function buildFullHistory(ticker: string, currentPrice: number): PricePoint[] {
   const rng = mulberry32(hashStr(ticker));
-  const out: PricePoint[] = [];
-  const now = Date.now();
-  // Random ticker-specific volatility & drift
+  // Ticker-specific volatility & drift
   const vol = 0.012 + rng() * 0.025;
   const drift = (rng() - 0.45) * 0.0015;
   let p = currentPrice * (0.6 + rng() * 0.6);
   const path: number[] = [];
-  for (let i = days; i >= 0; i--) {
+  for (let i = MAX_HISTORY_DAYS; i >= 0; i--) {
     const noise = (rng() - 0.5) * vol * 2;
     p = Math.max(0.0001, p * (1 + drift + noise));
     path.push(p);
   }
-  // Rescale so last point matches currentPrice exactly.
-  const scale = currentPrice / path[path.length - 1];
-  for (let i = 0; i <= days; i++) {
+  // Rescale so the last point matches currentPrice exactly.
+  const last = path[path.length - 1];
+  const scale = last > 0 ? currentPrice / last : 1;
+  const now = Date.now();
+  const out: PricePoint[] = [];
+  for (let i = 0; i <= MAX_HISTORY_DAYS; i++) {
     const price = path[i] * scale;
     out.push({
-      date: new Date(now - (days - i) * 86400000).toISOString().slice(0, 10),
+      date: new Date(now - (MAX_HISTORY_DAYS - i) * 86400000)
+        .toISOString()
+        .slice(0, 10),
       price: Math.round(price * 10000) / 10000,
       volume: Math.round(500_000 + rng() * 4_500_000),
     });
   }
   return out;
+}
+
+/**
+ * Synthetic daily price history ending at currentPrice. All timeframes are
+ * tails of the same cached series so switching 1M ↔ 5Y stays consistent.
+ */
+export function generatePriceHistory(
+  ticker: string,
+  currentPrice: number,
+  days: number,
+): PricePoint[] {
+  // Round currentPrice to a stable bucket so micro price ticks don't bust the
+  // cache (which would re-randomize the entire history on every quote update).
+  const priceKey = Math.round(currentPrice * 100);
+  let cached = historyCache.get(ticker);
+  if (!cached || cached.priceKey !== priceKey) {
+    cached = { priceKey, series: buildFullHistory(ticker, currentPrice) };
+    historyCache.set(ticker, cached);
+  }
+  const n = Math.min(Math.max(1, Math.floor(days)), MAX_HISTORY_DAYS);
+  return cached.series.slice(cached.series.length - (n + 1));
 }
 
 export function pearson(a: number[], b: number[]): number {
