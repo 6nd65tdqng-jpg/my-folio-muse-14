@@ -76,6 +76,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { SymbolAutocomplete } from "@/components/symbol-autocomplete";
 import type { AssetType, Currency, Holding } from "@/lib/portfolio-types";
 
 type ChartTab = "price" | "benchmark" | "heatmap" | "correlation" | "drawdown";
@@ -423,11 +424,19 @@ function StockSelector({
         {showAdd && (
           <div className="mt-3 space-y-2 rounded-md border border-border bg-muted/30 p-2">
             <div className="flex gap-2">
-              <Input
-                placeholder="Ticker (e.g. NVDA)"
+              <SymbolAutocomplete
                 value={ticker}
-                onChange={(e) => setTicker(e.target.value)}
-                className="h-8 text-xs"
+                onChange={setTicker}
+                onPick={(s) => {
+                  setTicker(s.symbol);
+                  setName(s.name);
+                  setKind(s.kind);
+                  if (s.currency) setCur(s.currency as Currency);
+                  if (s.coingeckoId) setCgId(s.coingeckoId);
+                }}
+                placeholder="Search ticker or name"
+                className="flex-1"
+                inputClassName="h-8 text-xs"
               />
               <Input
                 placeholder="Name (optional)"
