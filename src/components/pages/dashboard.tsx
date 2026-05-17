@@ -70,21 +70,21 @@ export function Dashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard
           label="Total Value"
-          value={fmtMoney(m.totalValue, settings.baseCurrency)}
+          value={fmtMoney(m.totalValue, settings.baseCurrency, { compact: true })}
           sub={`Cost ${fmtMoney(m.totalCost, settings.baseCurrency, { compact: true })}`}
         />
         <KpiCard
           label="Unrealized P&L"
-          value={fmtMoney(m.totalPnl, settings.baseCurrency)}
+          value={fmtMoney(m.totalPnl, settings.baseCurrency, { compact: true })}
           sub={fmtPct(m.totalPnlPct)}
           tone={m.totalPnl >= 0 ? "up" : "down"}
         />
         <KpiCard
           label="Today"
-          value={fmtMoney(m.dayChange, settings.baseCurrency)}
+          value={fmtMoney(m.dayChange, settings.baseCurrency, { compact: true })}
           sub={fmtPct(m.dayChangePct)}
           tone={m.dayChange >= 0 ? "up" : "down"}
         />
@@ -106,7 +106,7 @@ export function Dashboard() {
               Last {history.length} days
             </span>
           </CardHeader>
-          <CardContent className="h-72">
+          <CardContent className="h-56 sm:h-72 px-2 sm:px-6">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={history}>
                 <defs>
@@ -160,15 +160,15 @@ export function Dashboard() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Allocation</CardTitle>
           </CardHeader>
-          <CardContent className="h-72">
+          <CardContent className="h-56 sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={allocByHolding}
                   dataKey="value"
                   nameKey="name"
-                  innerRadius={55}
-                  outerRadius={90}
+                  innerRadius="55%"
+                  outerRadius="90%"
                   paddingAngle={2}
                   stroke="var(--card)"
                 >
@@ -198,14 +198,14 @@ export function Dashboard() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">By Asset Class</CardTitle>
           </CardHeader>
-          <CardContent className="h-56">
+          <CardContent className="h-48 sm:h-56">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={allocByClass}
                   dataKey="value"
                   nameKey="name"
-                  outerRadius={80}
+                  outerRadius="80%"
                   stroke="var(--card)"
                 >
                   {allocByClass.map((_, i) => (
@@ -266,7 +266,7 @@ export function Dashboard() {
             Contribution to P&L
           </CardTitle>
         </CardHeader>
-        <CardContent className="h-64">
+        <CardContent className="h-56 sm:h-64 px-2 sm:px-6">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={m.rows.map((r) => ({
