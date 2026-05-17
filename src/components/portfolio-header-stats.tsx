@@ -19,25 +19,25 @@ export function PortfolioHeaderStats() {
   const upTotal = m.totalPnl >= 0;
 
   return (
-    <div className="flex flex-1 items-center justify-between gap-4 overflow-x-auto">
-      <div className="flex items-center gap-6">
+    <div className="flex flex-1 items-center justify-between gap-2 overflow-x-auto">
+      <div className="flex items-center gap-3 sm:gap-6">
         <div className="flex flex-col leading-tight">
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Total Value
+            Total
           </span>
-          <span className="font-mono text-base font-semibold tabular-nums">
-            {fmtMoney(m.totalValue, settings.baseCurrency)}
+          <span className="font-mono text-sm font-semibold tabular-nums sm:text-base">
+            {fmtMoney(m.totalValue, settings.baseCurrency, { compact: true })}
           </span>
         </div>
         <Stat
           label="Today"
-          primary={fmtMoney(m.dayChange, settings.baseCurrency)}
+          primary={fmtMoney(m.dayChange, settings.baseCurrency, { compact: true })}
           secondary={fmtPct(m.dayChangePct)}
           up={up}
         />
         <Stat
-          label="Total P&L"
-          primary={fmtMoney(m.totalPnl, settings.baseCurrency)}
+          label="P&L"
+          primary={fmtMoney(m.totalPnl, settings.baseCurrency, { compact: true })}
           secondary={fmtPct(m.totalPnlPct)}
           up={upTotal}
         />
@@ -73,19 +73,19 @@ function Stat({
 }) {
   const Icon = up ? ArrowUpRight : ArrowDownRight;
   return (
-    <div className="hidden flex-col leading-tight sm:flex">
+    <div className="flex flex-col leading-tight">
       <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
       <span
         className={cn(
-          "flex items-center gap-1 font-mono text-sm font-semibold tabular-nums",
+          "flex items-center gap-1 font-mono text-xs font-semibold tabular-nums sm:text-sm",
           up ? "text-[var(--success)]" : "text-destructive",
         )}
       >
-        <Icon className="h-3.5 w-3.5" />
+        <Icon className="hidden h-3.5 w-3.5 sm:inline" />
         {primary}
-        <span className="text-xs font-normal opacity-80">{secondary}</span>
+        <span className="hidden text-xs font-normal opacity-80 sm:inline">{secondary}</span>
       </span>
     </div>
   );
