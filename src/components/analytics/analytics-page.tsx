@@ -83,6 +83,23 @@ type ChartTab = "price" | "benchmark" | "heatmap" | "correlation" | "drawdown";
 type Timeframe = keyof typeof TIMEFRAMES;
 const TIMEFRAME_KEYS: Timeframe[] = ["1M", "3M", "6M", "YTD", "1Y", "5Y"];
 
+// Smart date tick: "MMM dd" for short ranges, "MMM yy" for ranges spanning
+// more than ~14 months so multi-year charts aren't ambiguous.
+function makeDateTickFormatter(days: number) {
+  const longRange = days > 420;
+  return (d: string) => {
+    if (!d || d.length < 10) return d;
+    const [y, m, dd] = d.split("-");
+    const monthIdx = parseInt(m, 10) - 1;
+    const months = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    const mon = months[monthIdx] ?? m;
+    return longRange ? `${mon} ${y.slice(2)}` : `${mon} ${dd}`;
+  };
+}
+
 export function AnalyticsPage() {
   const holdings = usePortfolio((s) => s.holdings);
   const watchlist = usePortfolio((s) => s.watchlist);
