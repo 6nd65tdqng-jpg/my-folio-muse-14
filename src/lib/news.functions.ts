@@ -86,9 +86,18 @@ export const fetchPortfolioNews = createServerFn({ method: "POST" })
     if (data.symbols.length === 0) return { items: [] };
 
     try {
-      const url = `https://api.marketaux.com/v1/news/all?symbols=${encodeURIComponent(
-        data.symbols.join(","),
-      )}&filter_entities=true&language=en&limit=50&api_token=${key}`;
+      const publishedAfter = new Date(Date.now() - 7 * 86400 * 1000)
+        .toISOString()
+        .slice(0, 19); // YYYY-MM-DDTHH:mm:ss
+      const url =
+        `https://api.marketaux.com/v1/news/all` +
+        `?symbols=${encodeURIComponent(data.symbols.join(","))}` +
+        `&filter_entities=false` +
+        `&limit=50` +
+        `&published_after=${encodeURIComponent(publishedAfter)}` +
+        `&language=en` +
+        `&sort=published_at` +
+        `&api_token=${key}`;
       const r = await fetch(url);
       if (!r.ok) return { items: [], error: `Marketaux ${r.status}` };
       const json = (await r.json()) as MarketauxResponse;
