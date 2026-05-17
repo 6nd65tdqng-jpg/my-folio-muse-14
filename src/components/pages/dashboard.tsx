@@ -328,7 +328,7 @@ function KpiCard({
         <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
           {label}
         </div>
-        <div className="font-mono text-2xl font-semibold tabular-nums">
+        <div className="font-mono text-lg font-semibold tabular-nums sm:text-2xl">
           {value}
         </div>
         {sub && (
