@@ -55,6 +55,7 @@ export function BottomNav() {
             <Link
               key={item.url}
               to={item.url}
+              onClick={() => setChatOpen(false)}
               className={cn(
                 "flex min-h-11 flex-1 flex-col items-center justify-center gap-1 px-2 text-[10px] font-medium transition",
                 active ? "text-primary" : "text-muted-foreground",
