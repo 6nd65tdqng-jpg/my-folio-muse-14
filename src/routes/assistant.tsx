@@ -185,7 +185,7 @@ function AssistantPage() {
           </Button>
         </form>
         <p className="mx-auto mt-2 max-w-3xl text-[10px] text-muted-foreground">
-          Analysis only — not financial advice. Powered by Lovable AI · Gemini 2.5 Flash.
+          Analysis only — not financial advice. Powered by Lovable AI.
         </p>
       </div>
     </div>
