@@ -7,10 +7,12 @@ export function useLivePrices() {
   const setPrices = usePortfolio((s) => s.setPrices);
   const interval = usePortfolio((s) => s.settings.refreshIntervalMin);
   const ran = useRef(false);
+  const lastRun = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
     async function run() {
+      lastRun.current = Date.now();
       const prices: Record<string, { price: number; prevClose?: number }> = {};
 
       // Crypto via CoinGecko (no key needed)
@@ -65,9 +67,25 @@ export function useLivePrices() {
     }
     const ms = Math.max(1, interval) * 60_000;
     const t = setInterval(run, ms);
+
+    // Refresh when the app returns to the foreground (tab visible, window
+    // focused, or pageshow from bfcache) — but throttle to avoid spamming
+    // when the user toggles quickly.
+    function maybeRun() {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastRun.current < 15_000) return;
+      run();
+    }
+    document.addEventListener("visibilitychange", maybeRun);
+    window.addEventListener("focus", maybeRun);
+    window.addEventListener("pageshow", maybeRun);
+
     return () => {
       cancelled = true;
       clearInterval(t);
+      document.removeEventListener("visibilitychange", maybeRun);
+      window.removeEventListener("focus", maybeRun);
+      window.removeEventListener("pageshow", maybeRun);
     };
   }, [holdings, setPrices, interval]);
 }
