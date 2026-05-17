@@ -97,7 +97,7 @@ export function HoldingsTable({
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle className="text-sm font-medium">Holdings</CardTitle>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Input
             placeholder="Search ticker or name…"
             value={q}
@@ -122,25 +122,25 @@ export function HoldingsTable({
             <TableHeader>
               <TableRow>
                 <Th onClick={() => toggleSort("ticker")}>Asset</Th>
-                <Th align="right">Qty</Th>
-                <Th align="right">Avg Cost</Th>
-                <Th align="right">Price</Th>
-                <Th align="right" onClick={() => toggleSort("day")}>
+                <Th align="right" className="hidden md:table-cell">Qty</Th>
+                <Th align="right" className="hidden lg:table-cell">Avg Cost</Th>
+                <Th align="right" className="hidden md:table-cell">Price</Th>
+                <Th align="right" className="hidden sm:table-cell" onClick={() => toggleSort("day")}>
                   Day
                 </Th>
                 <Th align="right" onClick={() => toggleSort("value")}>
                   Value
                 </Th>
-                <Th align="right" onClick={() => toggleSort("pnl")}>
+                <Th align="right" className="hidden sm:table-cell" onClick={() => toggleSort("pnl")}>
                   P&L
                 </Th>
                 <Th align="right" onClick={() => toggleSort("pnlPct")}>
                   P&L %
                 </Th>
-                <Th align="right" onClick={() => toggleSort("alloc")}>
+                <Th align="right" className="hidden md:table-cell" onClick={() => toggleSort("alloc")}>
                   Alloc
                 </Th>
-                {!compact && <Th align="right">Actions</Th>}
+                {!compact && <Th align="right" className="hidden sm:table-cell">Actions</Th>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -177,18 +177,18 @@ export function HoldingsTable({
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">
+                    <TableCell className="hidden text-right font-mono tabular-nums md:table-cell">
                       {fmtNum(h.quantity, 4)}
                     </TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">
+                    <TableCell className="hidden text-right font-mono tabular-nums lg:table-cell">
                       {fmtMoney(h.avgCostBasis, h.currency)}
                     </TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">
+                    <TableCell className="hidden text-right font-mono tabular-nums md:table-cell">
                       {fmtMoney(h.currentPrice, h.currency)}
                     </TableCell>
                     <TableCell
                       className={cn(
-                        "text-right font-mono tabular-nums",
+                        "hidden text-right font-mono tabular-nums sm:table-cell",
                         m.dayChange >= 0
                           ? "text-[var(--success)]"
                           : "text-destructive",
@@ -197,15 +197,15 @@ export function HoldingsTable({
                       {fmtPct(m.dayChangePct)}
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums">
-                      {fmtMoney(m.valueBase, settings.baseCurrency)}
+                      {fmtMoney(m.valueBase, settings.baseCurrency, { compact: true })}
                     </TableCell>
                     <TableCell
                       className={cn(
-                        "text-right font-mono tabular-nums",
+                        "hidden text-right font-mono tabular-nums sm:table-cell",
                         m.pnl >= 0 ? "text-[var(--success)]" : "text-destructive",
                       )}
                     >
-                      {fmtMoney(m.pnlBase, settings.baseCurrency)}
+                      {fmtMoney(m.pnlBase, settings.baseCurrency, { compact: true })}
                     </TableCell>
                     <TableCell
                       className={cn(
@@ -215,7 +215,7 @@ export function HoldingsTable({
                     >
                       {fmtPct(m.pnlPct)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="hidden text-right md:table-cell">
                       <div className="flex flex-col items-end gap-1">
                         <span className="font-mono text-xs tabular-nums">
                           {alloc.toFixed(1)}%
@@ -229,7 +229,7 @@ export function HoldingsTable({
                       </div>
                     </TableCell>
                     {!compact && (
-                      <TableCell className="text-right">
+                      <TableCell className="hidden text-right sm:table-cell">
                         <div className="inline-flex gap-1">
                           <Button
                             size="icon"
@@ -294,10 +294,12 @@ function Th({
   children,
   align = "left",
   onClick,
+  className,
 }: {
   children: React.ReactNode;
   align?: "left" | "right";
   onClick?: () => void;
+  className?: string;
 }) {
   return (
     <TableHead
@@ -305,6 +307,7 @@ function Th({
         "text-xs uppercase tracking-wider text-muted-foreground",
         align === "right" && "text-right",
         onClick && "cursor-pointer select-none hover:text-foreground",
+        className,
       )}
       onClick={onClick}
     >
