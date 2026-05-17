@@ -1369,11 +1369,10 @@ function ResearchPanel({
 }) {
   const { h, m } = row;
   const weight = totalValue > 0 ? (m.valueBase / totalValue) * 100 : 0;
+  const { data: statsHistory } = usePriceHistory(h, 365);
 
   const stats = useMemo(() => {
-    const prices = generatePriceHistory(h.ticker, h.currentPrice, 365).map(
-      (d) => d.price,
-    );
+    const prices = statsHistory.map((d) => d.price);
     const bench = generatePriceHistory("__SPX__", 500, 365).map((d) => d.price);
     const r = dailyReturns(prices);
     const br = dailyReturns(bench);
@@ -1391,7 +1390,7 @@ function ResearchPanel({
       hi52: Math.max(...prices),
       lo52: Math.min(...prices),
     };
-  }, [h.ticker, h.currentPrice]);
+  }, [h.ticker, h.currentPrice, statsHistory]);
 
   const [research, setResearch] = useState<string | null>(null);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
