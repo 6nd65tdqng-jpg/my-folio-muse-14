@@ -294,10 +294,12 @@ function Th({
   children,
   align = "left",
   onClick,
+  className,
 }: {
   children: React.ReactNode;
   align?: "left" | "right";
   onClick?: () => void;
+  className?: string;
 }) {
   return (
     <TableHead
@@ -305,6 +307,7 @@ function Th({
         "text-xs uppercase tracking-wider text-muted-foreground",
         align === "right" && "text-right",
         onClick && "cursor-pointer select-none hover:text-foreground",
+        className,
       )}
       onClick={onClick}
     >
