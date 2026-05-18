@@ -117,12 +117,11 @@ export const fetchUpcomingEvents = createServerFn({ method: "POST" })
     const symbols = Array.isArray(input?.symbols)
       ? input.symbols
           .filter(
-            (s) =>
+            (s): s is string =>
               typeof s === "string" &&
               s.length > 0 &&
               s.length <= 20 &&
-              !s.includes(".") && // skip non-US tickers (no Finnhub coverage)
-              !/^[a-z]+$/i.test(s) === false,
+              !s.includes("."), // skip non-US tickers (no Finnhub free coverage)
           )
           .slice(0, 50)
       : [];
