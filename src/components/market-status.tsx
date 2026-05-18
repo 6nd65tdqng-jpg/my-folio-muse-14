@@ -160,7 +160,7 @@ export function MarketStatus() {
 
   if (!now) {
     // Reserve space without rendering text — avoids SSR hydration mismatch.
-    return <div className="hidden h-5 w-44 sm:block" aria-hidden />;
+    return <div className="h-5 w-20 sm:w-44" aria-hidden />;
   }
 
   const status = computeStatus(now);
@@ -168,8 +168,8 @@ export function MarketStatus() {
 
   return (
     <div
-      className="hidden items-center gap-1.5 text-[11px] leading-tight sm:flex"
-      title={status.detail}
+      className="flex items-center gap-1.5 leading-tight"
+      title={`${status.label} — ${status.detail}`}
     >
       <Circle
         className={cn(
@@ -177,7 +177,20 @@ export function MarketStatus() {
           open ? "text-[var(--success)]" : "text-muted-foreground",
         )}
       />
-      <div className="flex flex-col">
+      {/* Mobile: compact single-line. */}
+      <div className="flex flex-col sm:hidden">
+        <span
+          className={cn(
+            "text-[10px] font-semibold uppercase tracking-wider",
+            open ? "text-[var(--success)]" : "text-muted-foreground",
+          )}
+        >
+          {open ? "Open" : "Closed"}
+        </span>
+        <span className="text-[9px] text-muted-foreground">{status.detail}</span>
+      </div>
+      {/* sm+: full label + detail. */}
+      <div className="hidden flex-col text-[11px] sm:flex">
         <span
           className={cn(
             "font-semibold uppercase tracking-wider",
