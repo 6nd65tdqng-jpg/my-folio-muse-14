@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { useSearch } from "@tanstack/react-router";
 import { generateAIResearch } from "@/lib/research.functions";
 import { fetchPriceHistory } from "@/lib/quotes.functions";
 import { usePortfolio } from "@/lib/portfolio-store";
@@ -190,6 +191,17 @@ export function AnalyticsPage() {
 
   const [chart, setChart] = useState<ChartTab>("price");
   const [tf, setTf] = useState<Timeframe>("3M");
+
+  // Deep-link: /analytics?ticker=XXX selects that ticker if present.
+  const search = useSearch({ from: "/analytics" });
+  const requestedTicker = search.ticker;
+  useEffect(() => {
+    if (!requestedTicker) return;
+    const match = combined.find(
+      (r) => r.h.ticker.toUpperCase() === requestedTicker.toUpperCase(),
+    );
+    if (match && match.h.id !== selectedId) setSelectedId(match.h.id);
+  }, [requestedTicker, combined, selectedId]);
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-10">

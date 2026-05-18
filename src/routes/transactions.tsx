@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AddTransactionDialog } from "@/components/add-transaction-dialog";
+import { TickerLink } from "@/components/ticker-link";
 
 export const Route = createFileRoute("/transactions")({
   head: () => ({
@@ -134,7 +135,9 @@ function TransactionsPage() {
                         {t.type}
                       </Badge>
                     </TableCell>
-                    <TableCell className="font-medium">{t.ticker}</TableCell>
+                    <TableCell className="font-medium">
+                      <TickerLink ticker={t.ticker} />
+                    </TableCell>
                     <TableCell className="hidden text-right font-mono tabular-nums sm:table-cell">
                       {fmtNum(t.quantity, 4)}
                     </TableCell>
