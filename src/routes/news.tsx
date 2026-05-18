@@ -24,6 +24,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TickerLink } from "@/components/ticker-link";
 
 export const Route = createFileRoute("/news")({
   head: () => ({
@@ -386,9 +387,11 @@ function TickerGroup({ ticker, items }: { ticker: string; items: NewsItem[] }) {
         <CollapsibleTrigger asChild>
           <button className="flex w-full items-center justify-between gap-3 p-3 text-left hover:bg-muted/30">
             <div className="flex min-w-0 items-center gap-3">
-              <Badge variant="outline" className="font-mono">
-                {ticker}
-              </Badge>
+              <TickerLink ticker={ticker}>
+                <Badge variant="outline" className="font-mono hover:bg-accent">
+                  {ticker}
+                </Badge>
+              </TickerLink>
               <span className="truncate text-sm text-muted-foreground">
                 {top.headline}
               </span>
