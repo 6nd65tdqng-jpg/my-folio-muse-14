@@ -22,6 +22,15 @@ export interface HistoricalPricePoint {
   volume: number;
 }
 
+export interface IndexQuote {
+  symbol: string;
+  name: string;
+  price: number;
+  prevClose: number;
+  change: number;
+  changePct: number;
+}
+
 const HISTORY_CACHE_TTL_MS = 30 * 60 * 1000;
 const historyCache = new Map<
   string,
@@ -328,3 +337,71 @@ export const fetchPriceHistory = createServerFn({ method: "POST" })
     historyCache.set(cacheKey, { at: Date.now(), points, source });
     return { points, source };
   });
+
+const INDICES_CACHE_TTL_MS = 60 * 1000;
+let indicesCache: { at: number; data: IndexQuote[] } | null = null;
+
+const INDEX_SYMBOLS: Array<{ symbol: string; name: string }> = [
+  { symbol: "^GSPC", name: "S&P 500" },
+  { symbol: "ES=F", name: "S&P 500 Futures" },
+  { symbol: "^IXIC", name: "Nasdaq" },
+  { symbol: "NQ=F", name: "Nasdaq Futures" },
+  { symbol: "^DJI", name: "Dow Jones" },
+  { symbol: "YM=F", name: "Dow Futures" },
+  { symbol: "GC=F", name: "Gold" },
+  { symbol: "CL=F", name: "Crude Oil (WTI)" },
+];
+
+async function fetchYahooQuoteMeta(symbol: string): Promise<IndexQuote | null> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+    symbol,
+  )}?interval=1d&range=5d`;
+  const r = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; PortfolioApp/1.0)" },
+  });
+  if (!r.ok) return null;
+  const json = (await r.json()) as {
+    chart?: {
+      result?: Array<{
+        meta?: {
+          regularMarketPrice?: number;
+          chartPreviousClose?: number;
+          previousClose?: number;
+        };
+      }>;
+    };
+  };
+  const meta = json.chart?.result?.[0]?.meta;
+  if (!meta) return null;
+  const price = Number(meta.regularMarketPrice);
+  const prev = Number(meta.chartPreviousClose ?? meta.previousClose);
+  if (!isFinite(price) || price <= 0 || !isFinite(prev) || prev <= 0) return null;
+  const change = price - prev;
+  const changePct = (change / prev) * 100;
+  const def = INDEX_SYMBOLS.find((s) => s.symbol === symbol);
+  return {
+    symbol,
+    name: def?.name ?? symbol,
+    price,
+    prevClose: prev,
+    change,
+    changePct,
+  };
+}
+
+export const fetchMarketIndices = createServerFn({ method: "GET" }).handler(
+  async (): Promise<{ indices: IndexQuote[] }> => {
+    if (indicesCache && Date.now() - indicesCache.at < INDICES_CACHE_TTL_MS) {
+      return { indices: indicesCache.data };
+    }
+    const settled = await Promise.allSettled(
+      INDEX_SYMBOLS.map((s) => fetchYahooQuoteMeta(s.symbol)),
+    );
+    const indices: IndexQuote[] = [];
+    for (const r of settled) {
+      if (r.status === "fulfilled" && r.value) indices.push(r.value);
+    }
+    if (indices.length > 0) indicesCache = { at: Date.now(), data: indices };
+    return { indices };
+  },
+);
