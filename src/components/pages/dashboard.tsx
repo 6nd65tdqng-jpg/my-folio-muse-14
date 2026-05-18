@@ -26,6 +26,7 @@ import { ArrowDown, ArrowUp, RefreshCw, TrendingDown, TrendingUp } from "lucide-
 import { Button } from "@/components/ui/button";
 import { HoldingsTable } from "@/components/holdings-table";
 import { TickerLink } from "@/components/ticker-link";
+import { MarketIndicesCard } from "@/components/market-indices-card";
 import {
   Carousel,
   CarouselContent,
@@ -89,6 +90,7 @@ export function Dashboard() {
         losers={dayLosers}
         currency={settings.baseCurrency}
       />
+      <MarketIndicesCard />
       {/* KPI cards: swipeable carousel on mobile, grid on md+ */}
       <Carousel
         opts={{ align: "start", dragFree: true }}
