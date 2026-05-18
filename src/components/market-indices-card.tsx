@@ -167,6 +167,11 @@ export function MarketIndicesCard() {
             })}
           </div>
         )}
+        <p className="mt-2 text-[9px] leading-tight text-muted-foreground/70">
+          Source: Yahoo Finance (regular-market price &amp; previous close).
+          Futures (ES/NQ/YM) change is vs prior settlement; cash indices vs
+          previous official close. Updates every 60s.
+        </p>
       </CardContent>
     </Card>
   );

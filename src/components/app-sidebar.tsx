@@ -14,6 +14,7 @@ import {
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -22,6 +23,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { EventsCalendarSidebar } from "@/components/events-calendar";
 
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -78,6 +80,11 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      {!collapsed && (
+        <SidebarFooter className="border-t border-sidebar-border">
+          <EventsCalendarSidebar />
+        </SidebarFooter>
+      )}
     </Sidebar>
   );
 }
