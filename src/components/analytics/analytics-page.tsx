@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { useSearch } from "@tanstack/react-router";
 import { generateAIResearch } from "@/lib/research.functions";
 import { fetchPriceHistory } from "@/lib/quotes.functions";
 import { usePortfolio } from "@/lib/portfolio-store";
