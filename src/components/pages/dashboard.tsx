@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { ArrowDown, ArrowUp, RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HoldingsTable } from "@/components/holdings-table";
+import { TickerLink } from "@/components/ticker-link";
 import {
   Carousel,
   CarouselContent,
@@ -485,7 +486,9 @@ function MoverList({
           className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-accent/50"
         >
           <div className="flex flex-col leading-tight">
-            <span className="text-sm font-medium">{r.h.ticker}</span>
+            <TickerLink ticker={r.h.ticker} className="text-sm font-medium">
+              {r.h.ticker}
+            </TickerLink>
             <span className="text-[11px] text-muted-foreground">
               {r.h.name}
             </span>
@@ -601,7 +604,9 @@ function DayMoverList({
           className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-accent/50"
         >
           <div className="flex flex-col leading-tight">
-            <span className="text-sm font-medium">{r.h.ticker}</span>
+            <TickerLink ticker={r.h.ticker} className="text-sm font-medium">
+              {r.h.ticker}
+            </TickerLink>
             <span className="text-[11px] text-muted-foreground">{r.h.name}</span>
           </div>
           <div className="text-right">
