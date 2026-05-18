@@ -155,10 +155,20 @@ function AppShell() {
       <div className="flex min-h-screen w-full bg-background text-foreground">
         <AppSidebar />
         <div className="flex min-h-screen flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-3 backdrop-blur md:px-6">
-            <SidebarTrigger />
-            <PortfolioHeaderStats />
-            <MarketStatus />
+          <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
+            <div className="flex h-14 items-center gap-3 px-3 md:px-6">
+              <SidebarTrigger />
+              <div className="min-w-0 flex-1">
+                <PortfolioHeaderStats />
+              </div>
+              <div className="hidden shrink-0 sm:flex">
+                <MarketStatus />
+              </div>
+            </div>
+            {/* Mobile: dedicated row so market status is always visible. */}
+            <div className="flex h-7 items-center border-t border-border/60 px-3 sm:hidden">
+              <MarketStatus />
+            </div>
           </header>
           <main className="flex-1 px-3 py-4 md:px-6 md:py-6">
             <Outlet />
