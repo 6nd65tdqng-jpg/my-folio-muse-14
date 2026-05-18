@@ -4,7 +4,7 @@ import { AssistantChat } from "@/components/assistant-chat";
 export const Route = createFileRoute("/assistant")({
   head: () => ({
     meta: [
-      { title: "Assistant — Lumen Folio" },
+      { title: "Assistant — AM Portfolio Tracker" },
       {
         name: "description",
         content: "AI portfolio assistant grounded in your live holdings.",

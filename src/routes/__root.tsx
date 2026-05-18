@@ -85,7 +85,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "Track equities and crypto across currencies with live prices, P&L, and analytics.",
       },
-      { name: "author", content: "Lumen Folio" },
+      { name: "author", content: "AM Portfolio Tracker" },
       { property: "og:title", content: "AM Portfolio Tracker" },
       {
         property: "og:description",

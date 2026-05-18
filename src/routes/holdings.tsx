@@ -4,7 +4,7 @@ import { HoldingsTable } from "@/components/holdings-table";
 export const Route = createFileRoute("/holdings")({
   head: () => ({
     meta: [
-      { title: "Holdings — Lumen Folio" },
+      { title: "Holdings — AM Portfolio Tracker" },
       {
         name: "description",
         content: "Manage your portfolio positions across equities and crypto.",

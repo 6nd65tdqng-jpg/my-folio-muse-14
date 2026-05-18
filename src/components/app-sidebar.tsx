@@ -51,7 +51,7 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-semibold tracking-tight">
-                Lumen Folio
+                AM Portfolio Tracker
               </span>
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 Portfolio Tracker
