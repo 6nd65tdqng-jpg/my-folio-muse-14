@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export const Route = createFileRoute("/crypto")({
   head: () => ({
     meta: [
-      { title: "Crypto — Lumen Folio" },
+      { title: "Crypto — AM Portfolio Tracker" },
       { name: "description", content: "All your crypto holdings in one place." },
     ],
   }),

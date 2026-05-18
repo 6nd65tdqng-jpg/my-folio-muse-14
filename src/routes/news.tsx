@@ -29,7 +29,7 @@ import { TickerLink } from "@/components/ticker-link";
 export const Route = createFileRoute("/news")({
   head: () => ({
     meta: [
-      { title: "Portfolio Intelligence — Lumen Folio" },
+      { title: "Portfolio Intelligence — AM Portfolio Tracker" },
       {
         name: "description",
         content:

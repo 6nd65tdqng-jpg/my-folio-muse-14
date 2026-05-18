@@ -1,6 +1,6 @@
 {
-  "name": "Lumen Folio",
-  "short_name": "Lumen Folio",
+  "name": "AM Portfolio Tracker",
+  "short_name": "AM Portfolio Tracker",
   "description": "Track equities and crypto across currencies with live prices, P&L, and analytics.",
   "start_url": "/",
   "scope": "/",

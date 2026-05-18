@@ -4,7 +4,7 @@ import { Dashboard } from "@/components/pages/dashboard";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard — Lumen Folio" },
+      { title: "Dashboard — AM Portfolio Tracker" },
       {
         name: "description",
         content:

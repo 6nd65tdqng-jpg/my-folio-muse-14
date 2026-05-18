@@ -61,7 +61,7 @@ export function InstallPrompt() {
           <Download className="h-5 w-5" />
         </div>
         <div className="flex-1">
-          <p className="text-sm font-medium">Install Lumen Folio</p>
+          <p className="text-sm font-medium">Install AM Portfolio Tracker</p>
           <p className="text-xs text-muted-foreground">
             Add to your home screen for quick access and offline use.
           </p>

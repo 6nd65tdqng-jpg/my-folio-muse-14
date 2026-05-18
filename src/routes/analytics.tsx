@@ -10,7 +10,7 @@ export const Route = createFileRoute("/analytics")({
   },
   head: () => ({
     meta: [
-      { title: "Analytics — Lumen Folio" },
+      { title: "Analytics — AM Portfolio Tracker" },
       {
         name: "description",
         content:

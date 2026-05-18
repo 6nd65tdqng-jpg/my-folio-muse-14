@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/equities")({
   head: () => ({
     meta: [
-      { title: "Equities — Lumen Folio" },
+      { title: "Equities — AM Portfolio Tracker" },
       { name: "description", content: "All your stock positions in one place." },
     ],
   }),
