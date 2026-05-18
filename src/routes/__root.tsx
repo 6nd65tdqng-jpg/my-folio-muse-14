@@ -16,6 +16,7 @@ import { useEffect } from "react";
 import { usePortfolio } from "@/lib/portfolio-store";
 import { useLivePrices } from "@/hooks/use-live-prices";
 import { PortfolioHeaderStats } from "@/components/portfolio-header-stats";
+import { MarketStatus } from "@/components/market-status";
 
 function NotFoundComponent() {
   return (
@@ -157,6 +158,7 @@ function AppShell() {
           <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-3 backdrop-blur md:px-6">
             <SidebarTrigger />
             <PortfolioHeaderStats />
+            <MarketStatus />
           </header>
           <main className="flex-1 px-3 py-4 md:px-6 md:py-6">
             <Outlet />
