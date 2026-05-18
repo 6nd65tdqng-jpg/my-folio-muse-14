@@ -54,7 +54,7 @@ export function AppSidebar() {
                 AM Portfolio Tracker
               </span>
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Portfolio Tracker
+                Investments
               </span>
             </div>
           )}
