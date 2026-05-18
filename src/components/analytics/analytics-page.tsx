@@ -75,6 +75,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SymbolAutocomplete } from "@/components/symbol-autocomplete";
+import { ExtendedHoursPrice } from "@/components/extended-hours-price";
 import type { AssetType, Currency, Holding } from "@/lib/portfolio-types";
 
 type ChartTab = "price" | "benchmark" | "heatmap" | "correlation" | "drawdown";
@@ -664,6 +665,11 @@ function QuickStats({
             {m.dayChange >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
             {fmtMoney(m.dayChange, h.currency)} ({fmtPct(m.dayChangePct)})
           </div>
+          <ExtendedHoursPrice
+            ticker={h.ticker}
+            assetType={h.assetType}
+            currency={h.currency}
+          />
         </div>
         {isWatch ? (
           <div className="grid grid-cols-2 gap-y-2 text-xs">
