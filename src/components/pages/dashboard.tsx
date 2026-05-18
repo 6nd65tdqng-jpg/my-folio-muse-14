@@ -83,6 +83,7 @@ export function Dashboard() {
 
   return (
     <div className="space-y-4">
+      <MarketIndicesCard />
       <DayMoversCard
         dayChange={m.dayChange}
         dayChangePct={m.dayChangePct}
@@ -90,7 +91,6 @@ export function Dashboard() {
         losers={dayLosers}
         currency={settings.baseCurrency}
       />
-      <MarketIndicesCard />
       {/* KPI cards: swipeable carousel on mobile, grid on md+ */}
       <Carousel
         opts={{ align: "start", dragFree: true }}
