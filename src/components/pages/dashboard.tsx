@@ -26,6 +26,7 @@ import { ArrowDown, ArrowUp, RefreshCw, TrendingDown, TrendingUp } from "lucide-
 import { Button } from "@/components/ui/button";
 import { HoldingsTable } from "@/components/holdings-table";
 import { TickerLink } from "@/components/ticker-link";
+import { MarketIndicesCard } from "@/components/market-indices-card";
 import {
   Carousel,
   CarouselContent,
@@ -82,6 +83,7 @@ export function Dashboard() {
 
   return (
     <div className="space-y-4">
+      <MarketIndicesCard />
       <DayMoversCard
         dayChange={m.dayChange}
         dayChangePct={m.dayChangePct}
