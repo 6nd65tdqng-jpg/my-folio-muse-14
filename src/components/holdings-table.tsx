@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { AddHoldingDialog } from "@/components/add-holding-dialog";
 import { ImportCsvButton } from "@/components/import-csv-button";
 import { ExportCsvButton } from "@/components/export-csv-button";
+import { TickerLink } from "@/components/ticker-link";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -166,7 +167,9 @@ export function HoldingsTable({
                           {h.ticker.slice(0, 2)}
                         </div>
                         <div className="flex flex-col leading-tight">
-                          <span className="font-medium">{h.ticker}</span>
+                          <TickerLink ticker={h.ticker} className="font-medium">
+                            {h.ticker}
+                          </TickerLink>
                           <span className="text-[11px] text-muted-foreground">
                             {h.name}
                           </span>
