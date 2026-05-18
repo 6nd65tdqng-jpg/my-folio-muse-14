@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchMarketIndices, type IndexQuote } from "@/lib/quotes.functions";
+import { getUsMarketSession, type SessionInfo } from "@/lib/us-market-session";
 import { cn } from "@/lib/utils";
 
 // Group spot index + its futures so we can show futures when cash is closed.
@@ -18,21 +19,6 @@ const INDEX_GROUPS: Array<{
   { spot: "CL=F", label: "WTI Crude", decimals: 2 },
 ];
 
-function isUsMarketOpenNow(now: Date = new Date()): boolean {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(now);
-  const g = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  const wd = g("weekday");
-  if (wd === "Sat" || wd === "Sun") return false;
-  const mins = parseInt(g("hour"), 10) * 60 + parseInt(g("minute"), 10);
-  return mins >= 9 * 60 + 30 && mins < 16 * 60;
-}
-
 function fmtNum(v: number, decimals = 2): string {
   return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: decimals,
@@ -40,10 +26,26 @@ function fmtNum(v: number, decimals = 2): string {
   }).format(v);
 }
 
+function sessionBadge(s: SessionInfo): string {
+  if (s.cashOpen) return "Live cash";
+  switch (s.phase) {
+    case "pre":
+      return "Pre-market — showing futures";
+    case "post":
+      return "After hours — showing futures";
+    case "weekend":
+      return "Weekend — showing futures";
+    case "holiday":
+      return `Holiday (${s.reason}) — showing futures`;
+    default:
+      return "Showing futures";
+  }
+}
+
 export function MarketIndicesCard() {
   const [data, setData] = useState<IndexQuote[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [marketOpen, setMarketOpen] = useState(false);
+  const [session, setSession] = useState<SessionInfo>({ phase: "post", cashOpen: false });
 
   useEffect(() => {
     let cancelled = false;
@@ -57,10 +59,10 @@ export function MarketIndicesCard() {
         if (!cancelled) setLoading(false);
       }
     }
-    setMarketOpen(isUsMarketOpenNow());
+    setSession(getUsMarketSession());
     run();
     const poll = setInterval(run, 60_000);
-    const tick = setInterval(() => setMarketOpen(isUsMarketOpenNow()), 30_000);
+    const tick = setInterval(() => setSession(getUsMarketSession()), 30_000);
     return () => {
       cancelled = true;
       clearInterval(poll);
@@ -69,13 +71,14 @@ export function MarketIndicesCard() {
   }, []);
 
   const bySym = new Map((data ?? []).map((q) => [q.symbol, q]));
+  const marketOpen = session.cashOpen;
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">Market Indices</CardTitle>
         <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          {marketOpen ? "Live cash" : "Showing futures (US market closed)"}
+          {sessionBadge(session)}
         </span>
       </CardHeader>
       <CardContent>
