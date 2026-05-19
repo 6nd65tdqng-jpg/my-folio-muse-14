@@ -8,7 +8,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
