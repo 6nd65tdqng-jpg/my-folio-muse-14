@@ -1,6 +1,6 @@
 // Lumen Folio service worker — NetworkFirst for HTML, CacheFirst for static assets.
 // Keep the version bump-able to invalidate old caches on deploy.
-const VERSION = "v2";
+const VERSION = "v3";
 const HTML_CACHE = `lumen-html-${VERSION}`;
 const ASSET_CACHE = `lumen-assets-${VERSION}`;
 
