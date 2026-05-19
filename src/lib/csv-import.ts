@@ -63,6 +63,88 @@ export interface CsvImportResult {
   fxRates: Partial<Record<Currency, number>>;
 }
 
+export interface ValidationError {
+  row: number;
+  field: string;
+  message: string;
+}
+
+export interface CsvValidationResult {
+  valid: boolean;
+  errors: ValidationError[];
+  warnings: string[];
+}
+
+export function validateCsvText(text: string): CsvValidationResult {
+  const rows = parseCsv(text);
+  const errors: ValidationError[] = [];
+  const warnings: string[] = [];
+  const seenTickers = new Map<string, number[]>();
+
+  rows.forEach((r, index) => {
+    const rowNum = index + 2;
+    const tickerRaw = r.ticker ?? r.symbol;
+    const ticker = tickerRaw ? String(tickerRaw).trim() : "";
+    if (!ticker) {
+      errors.push({ row: rowNum, field: "ticker", message: "Ticker is required" });
+    }
+
+    const qtyRaw = r.quantity ?? r.qty ?? r.shares;
+    const qty = num(qtyRaw);
+    if (!isFinite(qty)) {
+      errors.push({ row: rowNum, field: "quantity", message: "Valid quantity required" });
+    } else if (qty <= 0) {
+      errors.push({ row: rowNum, field: "quantity", message: "Quantity must be positive" });
+    }
+
+    const costRaw =
+      r.costbasis ?? r.avgcostbasis ?? r.avgcost ?? r.avgprice ?? r.cost;
+    if (costRaw !== undefined && costRaw !== null && costRaw !== "") {
+      const cost = num(costRaw);
+      if (!isFinite(cost)) {
+        errors.push({ row: rowNum, field: "avgCostBasis", message: "Valid cost basis required" });
+      } else if (cost < 0) {
+        errors.push({ row: rowNum, field: "avgCostBasis", message: "Cost basis cannot be negative" });
+      }
+    }
+
+    const typeHint = r.type ? String(r.type).toLowerCase() : "";
+    if (typeHint && !["equity", "crypto", "stock", "etf"].includes(typeHint)) {
+      errors.push({
+        row: rowNum,
+        field: "type",
+        message: 'Asset type must be "equity" or "crypto"',
+      });
+    }
+
+    const dateRaw = r.purchasedate ?? r.date;
+    if (dateRaw && !/^\d{4}-\d{2}-\d{2}/.test(String(dateRaw))) {
+      errors.push({
+        row: rowNum,
+        field: "purchaseDate",
+        message: "Date must be YYYY-MM-DD format",
+      });
+    }
+
+    if (ticker) {
+      const currency = String(r.currency ?? "USD").trim().toUpperCase();
+      const key = `${ticker.toUpperCase()}|${currency}`;
+      if (!seenTickers.has(key)) seenTickers.set(key, []);
+      seenTickers.get(key)!.push(rowNum);
+    }
+  });
+
+  seenTickers.forEach((rowNums, key) => {
+    if (rowNums.length > 1) {
+      warnings.push(
+        `Duplicate ${key} on rows ${rowNums.join(", ")} — will be merged.`,
+      );
+    }
+  });
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
 export function holdingsFromCsv(text: string): CsvImportResult {
   const rows = parseCsv(text);
   const holdings: Holding[] = [];
