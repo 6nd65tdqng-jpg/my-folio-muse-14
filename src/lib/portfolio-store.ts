@@ -29,6 +29,8 @@ interface PortfolioState {
   addWatch: (w: Omit<Holding, "id" | "quantity" | "avgCostBasis" | "purchaseDate">) => void;
   removeWatch: (id: string) => void;
   addTransaction: (t: Omit<Transaction, "id">) => void;
+  updateTransaction: (id: string, patch: Partial<Omit<Transaction, "id">>) => void;
+  deleteTransaction: (id: string) => void;
   setPrices: (
     prices: Record<string, { price: number; prevClose?: number }>,
   ) => void;
@@ -112,6 +114,28 @@ function applyTransactionToHoldings(holdings: Holding[], tx: Transaction) {
   transaction.realizedPnl = (transaction.price - prev.avgCostBasis) * sellQty;
   next[idx] = { ...prev, quantity: Math.max(0, prev.quantity - sellQty) };
   return { holdings: next, transaction };
+}
+
+function reverseTransactionFromHoldings(holdings: Holding[], tx: Transaction) {
+  const key = holdingKey(tx.ticker, tx.currency);
+  const idx = holdings.findIndex((h) => holdingKey(h.ticker, h.currency) === key);
+  if (idx === -1) return holdings;
+  const prev = holdings[idx];
+  const next = [...holdings];
+  if (tx.type === "buy") {
+    const newQty = Math.max(0, prev.quantity - tx.quantity);
+    const newAvg =
+      newQty > 0
+        ? Math.max(
+            0,
+            (prev.quantity * prev.avgCostBasis - tx.quantity * tx.price) / newQty,
+          )
+        : 0;
+    next[idx] = { ...prev, quantity: newQty, avgCostBasis: newAvg };
+  } else {
+    next[idx] = { ...prev, quantity: prev.quantity + tx.quantity };
+  }
+  return next;
 }
 
 export const usePortfolio = create<PortfolioState>()(
