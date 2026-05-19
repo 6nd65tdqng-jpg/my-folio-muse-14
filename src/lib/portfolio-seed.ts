@@ -108,7 +108,7 @@ export function genSeedHistory(currentValue: number): PortfolioSnapshot[] {
   const now = Date.now();
   for (let i = days; i >= 0; i--) {
     const drift = 0.0015;
-    const noise = (Math.random() - 0.48) * 0.02;
+    const noise = (Math.sin(i * 12.9898) * 43758.5453 % 1 - 0.48) * 0.02;
     v = v * (1 + drift + noise);
     out.push({
       date: new Date(now - i * 86400000).toISOString().slice(0, 10),
