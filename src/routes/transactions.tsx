@@ -52,6 +52,9 @@ type SortKey = "date" | "ticker" | "type" | "qty" | "price" | "value";
 function TransactionsPage() {
   const transactions = usePortfolio((s) => s.transactions);
   const deleteTransaction = usePortfolio((s) => s.deleteTransaction);
+  const rebuildHoldingsFromTransactions = usePortfolio(
+    (s) => s.rebuildHoldingsFromTransactions,
+  );
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "date",
@@ -101,7 +104,19 @@ function TransactionsPage() {
             {transactions.length} record{transactions.length === 1 ? "" : "s"}.
           </p>
         </div>
-        <AddTransactionDialog />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              rebuildHoldingsFromTransactions();
+              toast.success("Holdings rebuilt from transaction history.");
+            }}
+          >
+            Rebuild holdings
+          </Button>
+          <AddTransactionDialog />
+        </div>
       </div>
 
       <Card>
