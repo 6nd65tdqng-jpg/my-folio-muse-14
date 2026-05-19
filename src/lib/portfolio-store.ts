@@ -62,6 +62,58 @@ const seedValue = seed.reduce(
   0,
 );
 
+function holdingKey(ticker: string, currency: Currency) {
+  return `${ticker.trim().toUpperCase()}|${currency}`;
+}
+
+function applyTransactionToHoldings(holdings: Holding[], tx: Transaction) {
+  const ticker = tx.ticker.trim().toUpperCase();
+  const key = holdingKey(ticker, tx.currency);
+  const idx = holdings.findIndex((h) => holdingKey(h.ticker, h.currency) === key);
+  const transaction: Transaction = { ...tx, ticker };
+
+  if (transaction.type === "buy") {
+    if (idx === -1) {
+      const holding: Holding = {
+        id: crypto.randomUUID(),
+        ticker,
+        name: ticker,
+        assetType: "equity",
+        quantity: transaction.quantity,
+        avgCostBasis: Math.max(0, transaction.price),
+        currentPrice: Math.max(0, transaction.price),
+        currency: transaction.currency,
+        purchaseDate: transaction.date,
+      };
+      return { holdings: [...holdings, holding], transaction };
+    }
+
+    const prev = holdings[idx];
+    const newQty = prev.quantity + transaction.quantity;
+    const newAvg =
+      newQty > 0
+        ? (prev.quantity * prev.avgCostBasis + transaction.quantity * transaction.price) /
+          newQty
+        : transaction.price;
+    const next = [...holdings];
+    next[idx] = {
+      ...prev,
+      quantity: newQty,
+      avgCostBasis: Math.max(0, newAvg),
+      currentPrice: prev.currentPrice > 0 ? prev.currentPrice : transaction.price,
+    };
+    return { holdings: next, transaction };
+  }
+
+  if (idx === -1) return { holdings, transaction };
+  const prev = holdings[idx];
+  const sellQty = Math.min(transaction.quantity, prev.quantity);
+  const next = [...holdings];
+  transaction.realizedPnl = (transaction.price - prev.avgCostBasis) * sellQty;
+  next[idx] = { ...prev, quantity: Math.max(0, prev.quantity - sellQty) };
+  return { holdings: next, transaction };
+}
+
 export const usePortfolio = create<PortfolioState>()(
   persist(
     (set, get) => ({
@@ -78,9 +130,9 @@ export const usePortfolio = create<PortfolioState>()(
           // weighted-average cost basis. This prevents duplicate rows and
           // keeps avg cost mathematically correct when a user re-adds a
           // ticker they already hold.
-          const key = `${h.ticker.toUpperCase()}|${h.currency}`;
+          const key = holdingKey(h.ticker, h.currency);
           const existingIdx = s.holdings.findIndex(
-            (x) => `${x.ticker.toUpperCase()}|${x.currency}` === key,
+            (x) => holdingKey(x.ticker, x.currency) === key,
           );
           const buyTx = {
             id: crypto.randomUUID(),
@@ -148,35 +200,19 @@ export const usePortfolio = create<PortfolioState>()(
       removeWatch: (id) =>
         set((s) => ({ watchlist: s.watchlist.filter((w) => w.id !== id) })),
       addTransaction: (t) => {
-        const tx: Transaction = { ...t, id: crypto.randomUUID() };
-        set((s) => ({ transactions: [tx, ...s.transactions] }));
-        const st = get();
-        const h = st.holdings.find(
-          (x) => x.ticker.toUpperCase() === t.ticker.toUpperCase(),
-        );
-        if (!h) return;
         if (t.quantity <= 0) return;
-        if (t.type === "buy") {
-          // Weighted-average cost basis. Guard newQty > 0 (always true here
-          // since both terms are positive) and never let avg go negative.
-          const newQty = h.quantity + t.quantity;
-          const newAvg =
-            newQty > 0
-              ? (h.quantity * h.avgCostBasis + t.quantity * t.price) / newQty
-              : t.price;
-          st.updateHolding(h.id, {
-            quantity: newQty,
-            avgCostBasis: Math.max(0, newAvg),
-          });
-        } else {
-          // Sell: avg cost basis is preserved on remaining shares (it only
-          // changes on buys). Cap sell quantity at current holding to avoid
-          // negative positions, and record realized P&L on the shares sold.
-          const sellQty = Math.min(t.quantity, h.quantity);
-          const newQty = h.quantity - sellQty;
-          tx.realizedPnl = (t.price - h.avgCostBasis) * sellQty;
-          st.updateHolding(h.id, { quantity: newQty });
-        }
+        set((s) => {
+          const tx: Transaction = {
+            ...t,
+            id: crypto.randomUUID(),
+            ticker: t.ticker.trim().toUpperCase(),
+          };
+          const applied = applyTransactionToHoldings(s.holdings, tx);
+          return {
+            holdings: applied.holdings,
+            transactions: [applied.transaction, ...s.transactions],
+          };
+        });
       },
       setPrices: (prices) =>
         set((s) => ({
@@ -245,11 +281,16 @@ export const usePortfolio = create<PortfolioState>()(
       version: PORTFOLIO_SEED_VERSION,
       migrate: (persistedState) => ({
         ...(persistedState as Partial<PortfolioState>),
-        holdings: seed,
-        watchlist: [],
-        transactions: seedTx,
-        history: genHistory(seedValue),
-        settings: defaultSettings,
+        holdings: (persistedState as Partial<PortfolioState>)?.holdings ?? seed,
+        watchlist: (persistedState as Partial<PortfolioState>)?.watchlist ?? [],
+        transactions:
+          (persistedState as Partial<PortfolioState>)?.transactions ?? seedTx,
+        history:
+          (persistedState as Partial<PortfolioState>)?.history ?? genHistory(seedValue),
+        settings: {
+          ...defaultSettings,
+          ...((persistedState as Partial<PortfolioState>)?.settings ?? {}),
+        },
         seedVersion: PORTFOLIO_SEED_VERSION,
       }),
       onRehydrateStorage: () => (state) => {

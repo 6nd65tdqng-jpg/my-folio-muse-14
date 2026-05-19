@@ -40,6 +40,9 @@ import {
 import { toast } from "sonner";
 import type { Holding } from "@/lib/portfolio-types";
 
+const stickyAssetColumn =
+  "sticky left-0 z-20 w-[156px] min-w-[156px] max-w-[156px] bg-card shadow-[1px_0_0_0_var(--border)] sm:w-auto sm:min-w-[220px] sm:max-w-none";
+
 type SortKey = "ticker" | "value" | "pnl" | "pnlPct" | "alloc" | "day";
 
 export function HoldingsTable({
@@ -126,12 +129,12 @@ export function HoldingsTable({
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <Table className="min-w-[760px]">
+          <Table className="min-w-[920px] border-separate border-spacing-0">
             <TableHeader>
               <TableRow>
                 <Th
                   onClick={() => toggleSort("ticker")}
-                  className="sticky left-0 z-20 bg-card"
+                  className={stickyAssetColumn}
                 >
                   Asset
                 </Th>
@@ -182,16 +185,16 @@ export function HoldingsTable({
                         : undefined
                     }
                   >
-                    <TableCell className="sticky left-0 z-10 bg-card shadow-[1px_0_0_0_var(--border)]">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-secondary-foreground">
+                    <TableCell className={cn(stickyAssetColumn, "z-10")}> 
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-secondary-foreground">
                           {h.ticker.slice(0, 2)}
                         </div>
-                        <div className="flex flex-col leading-tight">
+                        <div className="flex min-w-0 flex-col leading-tight">
                           <TickerLink ticker={h.ticker} className="font-medium">
                             {h.ticker}
                           </TickerLink>
-                          <span className="text-[11px] text-muted-foreground">
+                          <span className="truncate text-[11px] text-muted-foreground">
                             {h.name}
                           </span>
                         </div>
