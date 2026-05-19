@@ -43,6 +43,7 @@ interface PortfolioState {
     history?: PortfolioSnapshot[];
     watchlist?: Holding[];
   }) => void;
+  rebuildHoldingsFromTransactions: () => void;
   resetAll: () => void;
 }
 
@@ -335,6 +336,38 @@ export const usePortfolio = create<PortfolioState>()(
           watchlist: d.watchlist ?? [],
           seedVersion: PORTFOLIO_SEED_VERSION,
         })),
+      rebuildHoldingsFromTransactions: () =>
+        set((s) => {
+          const sorted = [...s.transactions].sort((a, b) =>
+            a.date.localeCompare(b.date),
+          );
+          // Preserve currentPrice/prevClose/name from existing holdings.
+          const priorByKey = new Map(
+            s.holdings.map((h) => [holdingKey(h.ticker, h.currency), h]),
+          );
+          let acc: Holding[] = [];
+          for (const tx of sorted) {
+            const applied = applyTransactionToHoldings(acc, tx);
+            acc = applied.holdings;
+          }
+          const cleaned = acc
+            .filter((h) => h.quantity > 1e-9)
+            .map((h) => {
+              const prior = priorByKey.get(holdingKey(h.ticker, h.currency));
+              return prior
+                ? {
+                    ...h,
+                    name: prior.name || h.name,
+                    assetType: prior.assetType,
+                    currentPrice: prior.currentPrice || h.currentPrice,
+                    prevClose: prior.prevClose,
+                    coingeckoId: prior.coingeckoId,
+                  }
+                : h;
+            });
+          console.log("[portfolio] Rebuilt holdings from transactions", cleaned);
+          return { holdings: cleaned };
+        }),
       resetAll: () =>
         set(() => ({
           holdings: seed,
@@ -363,7 +396,12 @@ export const usePortfolio = create<PortfolioState>()(
         seedVersion: PORTFOLIO_SEED_VERSION,
       }),
       onRehydrateStorage: () => (state) => {
-        if (state) state.hydrated = true;
+        if (state) {
+          state.hydrated = true;
+          if (Array.isArray(state.holdings)) {
+            state.holdings = state.holdings.filter((h) => h.quantity > 1e-9);
+          }
+        }
       },
     },
   ),
