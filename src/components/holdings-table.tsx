@@ -185,7 +185,7 @@ export function HoldingsTable({
                         : undefined
                     }
                   >
-                    <TableCell className={cn(stickyAssetColumn, "z-10")}> 
+                    <TableCell className={cn(stickyAssetColumn, "z-20")}> 
                       <div className="flex min-w-0 items-center gap-2">
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-secondary-foreground">
                           {h.ticker.slice(0, 2)}
