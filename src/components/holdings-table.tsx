@@ -24,6 +24,8 @@ import { AddHoldingDialog } from "@/components/add-holding-dialog";
 import { ImportCsvButton } from "@/components/import-csv-button";
 import { ExportCsvButton } from "@/components/export-csv-button";
 import { TickerLink } from "@/components/ticker-link";
+import { HoldingDetailsDrawer } from "@/components/holding-details-drawer";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,6 +59,9 @@ export function HoldingsTable({
   });
   const [editing, setEditing] = useState<Holding | null>(null);
   const [open, setOpen] = useState(false);
+  const [detailHolding, setDetailHolding] = useState<Holding | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const rows = useMemo(() => {
     const base = filter ? holdings.filter(filter) : holdings;
@@ -165,7 +170,18 @@ export function HoldingsTable({
               {rows.rows.map(({ h, m }) => {
                 const alloc = rows.total > 0 ? (m.valueBase / rows.total) * 100 : 0;
                 return (
-                  <TableRow key={h.id}>
+                  <TableRow
+                    key={h.id}
+                    className={cn(isMobile && "cursor-pointer")}
+                    onClick={
+                      isMobile
+                        ? () => {
+                            setDetailHolding(h);
+                            setDetailOpen(true);
+                          }
+                        : undefined
+                    }
+                  >
                     <TableCell className="sticky left-0 z-10 bg-card shadow-[1px_0_0_0_var(--border)]">
                       <div className="flex items-center gap-2">
                         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-secondary-foreground">
