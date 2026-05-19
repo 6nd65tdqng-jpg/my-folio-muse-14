@@ -362,7 +362,6 @@ export const usePortfolio = create<PortfolioState>()(
                     currentPrice: prior.currentPrice || h.currentPrice,
                     prevClose: prior.prevClose,
                     coingeckoId: prior.coingeckoId,
-                    logoUrl: prior.logoUrl,
                   }
                 : h;
             });
