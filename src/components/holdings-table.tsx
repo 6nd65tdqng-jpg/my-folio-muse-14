@@ -41,7 +41,7 @@ import { toast } from "sonner";
 import type { Holding } from "@/lib/portfolio-types";
 
 const stickyAssetColumn =
-  "sticky left-0 z-20 w-[156px] min-w-[156px] max-w-[156px] bg-card shadow-[1px_0_0_0_var(--border)] sm:w-auto sm:min-w-[220px] sm:max-w-none";
+  "sticky left-0 w-[156px] min-w-[156px] max-w-[156px] bg-card shadow-[1px_0_0_0_var(--border)] sm:w-auto sm:min-w-[220px] sm:max-w-none";
 
 type SortKey = "ticker" | "value" | "pnl" | "pnlPct" | "alloc" | "day";
 
