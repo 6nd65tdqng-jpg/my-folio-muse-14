@@ -213,7 +213,12 @@ export function HoldingsTable({
                           : "text-destructive",
                       )}
                     >
-                      {fmtPct(m.dayChangePct)}
+                      <div className="flex flex-col items-end leading-tight">
+                        <span>{fmtPct(m.dayChangePct)}</span>
+                        <span className="text-[10px] opacity-80">
+                          {fmtMoney(m.dayChangeBase, settings.baseCurrency, { compact: true })}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums">
                       {fmtNum(h.quantity, 4)}
