@@ -128,13 +128,13 @@ export function HoldingsTable({
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <Table className="min-w-[920px] border-separate border-spacing-0">
+        <div className="overflow-x-auto overscroll-x-contain">
+          <table className="w-full min-w-[920px] caption-bottom border-separate border-spacing-0 text-sm">
             <TableHeader>
               <TableRow>
                 <Th
                   onClick={() => toggleSort("ticker")}
-                  className={stickyAssetColumn}
+                  className={cn(stickyAssetColumn, "z-30")}
                 >
                   Asset
                 </Th>
@@ -314,7 +314,7 @@ export function HoldingsTable({
                 );
               })}
             </TableBody>
-          </Table>
+          </table>
         </div>
       </CardContent>
       <AddHoldingDialog open={open} onOpenChange={setOpen} editing={editing} />
