@@ -231,10 +231,26 @@ export const usePortfolio = create<PortfolioState>()(
             id: crypto.randomUUID(),
             ticker: t.ticker.trim().toUpperCase(),
           };
+          if (tx.type === "sell") {
+            console.log("[portfolio] SELL transaction received", tx);
+            console.log("[portfolio] Holdings before update", s.holdings);
+          }
           const applied = applyTransactionToHoldings(s.holdings, tx);
+          // Drop fully-closed positions so the UI doesn't show empty rows.
+          const cleanedHoldings = applied.holdings.filter(
+            (h) => h.quantity > 1e-9,
+          );
+          const nextTransactions = [applied.transaction, ...s.transactions];
+          if (tx.type === "sell") {
+            console.log("[portfolio] Holdings after update", cleanedHoldings);
+            console.log(
+              "[portfolio] Saving to localStorage",
+              { holdings: cleanedHoldings.length, transactions: nextTransactions.length },
+            );
+          }
           return {
-            holdings: applied.holdings,
-            transactions: [applied.transaction, ...s.transactions],
+            holdings: cleanedHoldings,
+            transactions: nextTransactions,
           };
         });
       },

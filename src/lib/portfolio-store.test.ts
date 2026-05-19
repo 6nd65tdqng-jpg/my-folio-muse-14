@@ -136,9 +136,8 @@ describe("portfolio-store: weighted-average cost basis", () => {
         type: "sell", ticker: "TEST", quantity: 999, price: 150,
         date: "2024-02-01", fees: 0, currency: "USD",
       });
-      const h = get("TEST")!;
-      expect(h.quantity).toBe(0);
-      expect(h.quantity).toBeGreaterThanOrEqual(0);
+      // Position fully closed and removed.
+      expect(get("TEST")).toBeUndefined();
       const tx = usePortfolio.getState().transactions[0];
       // realized P&L is on the shares actually sold (10), not on 999
       expect(tx.realizedPnl).toBe((150 - 100) * 10);
@@ -149,7 +148,8 @@ describe("portfolio-store: weighted-average cost basis", () => {
         type: "sell", ticker: "TEST", quantity: 10, price: 150,
         date: "2024-02-01", fees: 0, currency: "USD",
       });
-      expect(get("TEST")?.quantity).toBe(0);
+      // Fully-closed positions are removed from holdings.
+      expect(get("TEST")).toBeUndefined();
       // Re-buying at a new price resets effective avg correctly
       usePortfolio.getState().addTransaction({
         type: "buy", ticker: "TEST", quantity: 5, price: 200,
