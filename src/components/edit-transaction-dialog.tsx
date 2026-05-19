@@ -25,6 +25,7 @@ export function EditTransactionDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const updateTransaction = usePortfolio((s) => s.updateTransaction);
+  const holdings = usePortfolio((s) => s.holdings);
   const [type, setType] = useState<"buy" | "sell">("buy");
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
@@ -44,6 +45,21 @@ export function EditTransactionDialog({
     const px = Number(price);
     if (!qty || qty <= 0) return toast.error("Quantity must be greater than 0.");
     if (!isFinite(px) || px < 0) return toast.error("Price is invalid.");
+    if (type === "sell") {
+      const holding = holdings.find(
+        (h) =>
+          h.ticker.toUpperCase() === tx.ticker.toUpperCase() &&
+          h.currency === tx.currency,
+      );
+      // Available shares = current qty + qty restored by reversing this tx
+      const restored = tx.type === "sell" ? tx.quantity : -tx.quantity;
+      const available = Math.max(0, (holding?.quantity ?? 0) + restored);
+      if (qty > available + 1e-9) {
+        return toast.error(
+          `Sell quantity exceeds available ${tx.ticker} shares (${available}).`,
+        );
+      }
+    }
     updateTransaction(tx.id, { type, quantity: qty, price: px, date });
     toast.success("Transaction updated.");
     onOpenChange(false);
