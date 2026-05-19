@@ -8,7 +8,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -41,7 +40,7 @@ import { toast } from "sonner";
 import type { Holding } from "@/lib/portfolio-types";
 
 const stickyAssetColumn =
-  "sticky left-0 z-20 w-[156px] min-w-[156px] max-w-[156px] bg-card shadow-[1px_0_0_0_var(--border)] sm:w-auto sm:min-w-[220px] sm:max-w-none";
+  "sticky left-0 w-[156px] min-w-[156px] max-w-[156px] bg-card shadow-[1px_0_0_0_var(--border)] sm:w-auto sm:min-w-[220px] sm:max-w-none";
 
 type SortKey = "ticker" | "value" | "pnl" | "pnlPct" | "alloc" | "day";
 
@@ -104,7 +103,7 @@ export function HoldingsTable({
   }
 
   return (
-    <Card>
+    <Card className="min-w-0 overflow-hidden">
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle className="text-sm font-medium">Holdings</CardTitle>
         <div className="flex flex-wrap items-center gap-2">
@@ -128,13 +127,13 @@ export function HoldingsTable({
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <Table className="min-w-[920px] border-separate border-spacing-0">
+        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
+          <table className="w-full min-w-[920px] caption-bottom border-separate border-spacing-0 text-sm">
             <TableHeader>
               <TableRow>
                 <Th
                   onClick={() => toggleSort("ticker")}
-                  className={stickyAssetColumn}
+                  className={cn(stickyAssetColumn, "z-30")}
                 >
                   Asset
                 </Th>
@@ -185,7 +184,7 @@ export function HoldingsTable({
                         : undefined
                     }
                   >
-                    <TableCell className={cn(stickyAssetColumn, "z-10")}> 
+                    <TableCell className={cn(stickyAssetColumn, "z-20")}>
                       <div className="flex min-w-0 items-center gap-2">
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-secondary-foreground">
                           {h.ticker.slice(0, 2)}
@@ -314,7 +313,7 @@ export function HoldingsTable({
                 );
               })}
             </TableBody>
-          </Table>
+          </table>
         </div>
       </CardContent>
       <AddHoldingDialog open={open} onOpenChange={setOpen} editing={editing} />

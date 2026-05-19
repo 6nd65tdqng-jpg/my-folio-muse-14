@@ -154,7 +154,7 @@ function AppShell() {
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background text-foreground">
         <AppSidebar />
-        <div className="flex min-h-screen flex-1 flex-col">
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
             <div className="flex h-14 items-center gap-3 px-3 md:px-6">
               <SidebarTrigger />
@@ -170,7 +170,7 @@ function AppShell() {
               <MarketStatus />
             </div>
           </header>
-          <main className="flex-1 px-3 py-4 md:px-6 md:py-6">
+          <main className="min-w-0 flex-1 px-3 py-4 md:px-6 md:py-6">
             <Outlet />
           </main>
         </div>
