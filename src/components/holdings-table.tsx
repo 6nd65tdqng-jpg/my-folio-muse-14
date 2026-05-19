@@ -124,7 +124,12 @@ export function HoldingsTable({
           <Table className="min-w-[760px]">
             <TableHeader>
               <TableRow>
-                <Th onClick={() => toggleSort("ticker")}>Asset</Th>
+                <Th
+                  onClick={() => toggleSort("ticker")}
+                  className="sticky left-0 z-20 bg-card"
+                >
+                  Asset
+                </Th>
                 <Th align="right" onClick={() => toggleSort("day")}>
                   Day
                 </Th>
@@ -161,7 +166,7 @@ export function HoldingsTable({
                 const alloc = rows.total > 0 ? (m.valueBase / rows.total) * 100 : 0;
                 return (
                   <TableRow key={h.id}>
-                    <TableCell>
+                    <TableCell className="sticky left-0 z-10 bg-card shadow-[1px_0_0_0_var(--border)]">
                       <div className="flex items-center gap-2">
                         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-secondary-foreground">
                           {h.ticker.slice(0, 2)}
