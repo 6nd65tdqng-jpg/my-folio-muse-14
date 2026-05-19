@@ -255,7 +255,10 @@ export function HoldingsTable({
                       </div>
                     </TableCell>
                     {!compact && (
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="inline-flex gap-1">
                           <Button
                             size="icon"
@@ -312,6 +315,15 @@ export function HoldingsTable({
         </div>
       </CardContent>
       <AddHoldingDialog open={open} onOpenChange={setOpen} editing={editing} />
+      <HoldingDetailsDrawer
+        holding={detailHolding}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onEdit={(h) => {
+          setEditing(h);
+          setOpen(true);
+        }}
+      />
     </Card>
   );
 }
