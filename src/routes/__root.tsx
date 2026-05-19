@@ -17,6 +17,8 @@ import { usePortfolio } from "@/lib/portfolio-store";
 import { useLivePrices } from "@/hooks/use-live-prices";
 import { PortfolioHeaderStats } from "@/components/portfolio-header-stats";
 import { MarketStatus } from "@/components/market-status";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { OfflineIndicator } from "@/components/offline-indicator";
 
 function NotFoundComponent() {
   return (
@@ -148,8 +150,11 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppShell />
-      <Toaster richColors position="top-right" />
+      <ErrorBoundary>
+        <AppShell />
+        <OfflineIndicator />
+        <Toaster richColors position="top-right" />
+      </ErrorBoundary>
     </QueryClientProvider>
   );
 }
@@ -184,7 +189,9 @@ function AppShell() {
             </div>
           </header>
           <main className="min-w-0 flex-1 px-3 py-4 md:px-6 md:py-6">
-            <Outlet />
+            <ErrorBoundary onReset={() => (window.location.href = "/")}>
+              <Outlet />
+            </ErrorBoundary>
           </main>
         </div>
       </div>
