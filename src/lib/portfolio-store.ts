@@ -281,11 +281,16 @@ export const usePortfolio = create<PortfolioState>()(
       version: PORTFOLIO_SEED_VERSION,
       migrate: (persistedState) => ({
         ...(persistedState as Partial<PortfolioState>),
-        holdings: seed,
-        watchlist: [],
-        transactions: seedTx,
-        history: genHistory(seedValue),
-        settings: defaultSettings,
+        holdings: (persistedState as Partial<PortfolioState>)?.holdings ?? seed,
+        watchlist: (persistedState as Partial<PortfolioState>)?.watchlist ?? [],
+        transactions:
+          (persistedState as Partial<PortfolioState>)?.transactions ?? seedTx,
+        history:
+          (persistedState as Partial<PortfolioState>)?.history ?? genHistory(seedValue),
+        settings: {
+          ...defaultSettings,
+          ...((persistedState as Partial<PortfolioState>)?.settings ?? {}),
+        },
         seedVersion: PORTFOLIO_SEED_VERSION,
       }),
       onRehydrateStorage: () => (state) => {
