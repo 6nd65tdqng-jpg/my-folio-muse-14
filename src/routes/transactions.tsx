@@ -19,10 +19,23 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AddTransactionDialog } from "@/components/add-transaction-dialog";
 import { TickerLink } from "@/components/ticker-link";
+import { EditTransactionDialog } from "@/components/edit-transaction-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import type { Transaction } from "@/lib/portfolio-types";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/transactions")({
   head: () => ({
@@ -38,11 +51,15 @@ type SortKey = "date" | "ticker" | "type" | "qty" | "price" | "value";
 
 function TransactionsPage() {
   const transactions = usePortfolio((s) => s.transactions);
+  const deleteTransaction = usePortfolio((s) => s.deleteTransaction);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "date",
     dir: "desc",
   });
+  const [editTx, setEditTx] = useState<Transaction | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteTx, setDeleteTx] = useState<Transaction | null>(null);
 
   const rows = useMemo(() => {
     const filtered = transactions.filter((t) =>
@@ -109,12 +126,13 @@ function TransactionsPage() {
                   <Th align="right" className="hidden md:table-cell" onClick={() => toggle("price")}>Price</Th>
                   <Th align="right" onClick={() => toggle("value")}>Value</Th>
                   <Th align="right" className="hidden md:table-cell">Realized P&L</Th>
+                  <Th align="right">Actions</Th>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
                       No transactions yet.
                     </TableCell>
                   </TableRow>
@@ -159,6 +177,31 @@ function TransactionsPage() {
                     >
                       {t.realizedPnl == null ? "—" : fmtMoney(t.realizedPnl, t.currency)}
                     </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => {
+                            setEditTx(t);
+                            setEditOpen(true);
+                          }}
+                          aria-label="Edit transaction"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTx(t)}
+                          aria-label="Delete transaction"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -166,6 +209,45 @@ function TransactionsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <EditTransactionDialog
+        tx={editTx}
+        open={editOpen}
+        onOpenChange={(v) => {
+          setEditOpen(v);
+          if (!v) setEditTx(null);
+        }}
+      />
+
+      <AlertDialog
+        open={!!deleteTx}
+        onOpenChange={(v) => !v && setDeleteTx(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete transaction?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTx
+                ? `This will reverse the ${deleteTx.type.toUpperCase()} of ${deleteTx.quantity} ${deleteTx.ticker} from your holdings.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteTx) {
+                  deleteTransaction(deleteTx.id);
+                  toast.success("Transaction deleted.");
+                }
+                setDeleteTx(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
