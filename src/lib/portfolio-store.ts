@@ -23,6 +23,11 @@ interface PortfolioState {
   history: PortfolioSnapshot[];
   settings: Settings;
   hydrated: boolean;
+  pricesFetching: boolean;
+  lastPriceUpdate: string | null;
+  priceError: string | null;
+  setPricesFetching: (fetching: boolean) => void;
+  setPriceError: (error: string | null) => void;
   addHolding: (h: Omit<Holding, "id">) => void;
   updateHolding: (id: string, patch: Partial<Holding>) => void;
   deleteHolding: (id: string) => void;
@@ -149,6 +154,11 @@ export const usePortfolio = create<PortfolioState>()(
       settings: defaultSettings,
       seedVersion: PORTFOLIO_SEED_VERSION,
       hydrated: false,
+      pricesFetching: false,
+      lastPriceUpdate: null,
+      priceError: null,
+      setPricesFetching: (fetching) => set({ pricesFetching: fetching }),
+      setPriceError: (error) => set({ priceError: error }),
       addHolding: (h) =>
         set((s) => {
           // Merge into existing position with same ticker + currency using a
@@ -308,6 +318,8 @@ export const usePortfolio = create<PortfolioState>()(
               lastUpdated: new Date().toISOString(),
             };
           }),
+          lastPriceUpdate: new Date().toISOString(),
+          priceError: null,
         })),
       setSettings: (s) =>
         set((st) => ({ settings: { ...st.settings, ...s } })),
