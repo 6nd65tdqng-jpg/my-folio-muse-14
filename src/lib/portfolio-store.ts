@@ -396,7 +396,12 @@ export const usePortfolio = create<PortfolioState>()(
         seedVersion: PORTFOLIO_SEED_VERSION,
       }),
       onRehydrateStorage: () => (state) => {
-        if (state) state.hydrated = true;
+        if (state) {
+          state.hydrated = true;
+          if (Array.isArray(state.holdings)) {
+            state.holdings = state.holdings.filter((h) => h.quantity > 1e-9);
+          }
+        }
       },
     },
   ),
