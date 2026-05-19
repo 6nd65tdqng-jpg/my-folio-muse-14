@@ -344,7 +344,7 @@ let indicesCache: { at: number; data: IndexQuote[] } | null = null;
 const INDEX_SYMBOLS: Array<{ symbol: string; name: string }> = [
   { symbol: "^GSPC", name: "S&P 500" },
   { symbol: "ES=F", name: "S&P 500 Futures" },
-  { symbol: "^IXIC", name: "Nasdaq" },
+  { symbol: "^NDX", name: "Nasdaq 100" },
   { symbol: "NQ=F", name: "Nasdaq Futures" },
   { symbol: "^DJI", name: "Dow Jones" },
   { symbol: "YM=F", name: "Dow Futures" },
