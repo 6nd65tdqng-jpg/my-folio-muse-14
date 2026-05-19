@@ -103,7 +103,7 @@ export function HoldingsTable({
   }
 
   return (
-    <Card>
+    <Card className="min-w-0 overflow-hidden">
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle className="text-sm font-medium">Holdings</CardTitle>
         <div className="flex flex-wrap items-center gap-2">
@@ -127,7 +127,7 @@ export function HoldingsTable({
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto overscroll-x-contain">
+        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
           <table className="w-full min-w-[920px] caption-bottom border-separate border-spacing-0 text-sm">
             <TableHeader>
               <TableRow>
@@ -184,7 +184,7 @@ export function HoldingsTable({
                         : undefined
                     }
                   >
-                    <TableCell className={cn(stickyAssetColumn, "z-20")}> 
+                    <TableCell className={cn(stickyAssetColumn, "z-20")}>
                       <div className="flex min-w-0 items-center gap-2">
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-secondary-foreground">
                           {h.ticker.slice(0, 2)}
