@@ -128,7 +128,7 @@ export function HoldingsTable({
       </CardHeader>
       <CardContent className="p-0">
         <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="w-full min-w-[920px] caption-bottom border-separate border-spacing-0 text-sm">
+          <table className="w-full min-w-[920px] caption-bottom border-separate border-spacing-0 text-[15px] sm:text-sm">
             <TableHeader>
               <TableRow>
                 <Th
@@ -193,7 +193,7 @@ export function HoldingsTable({
                           <TickerLink ticker={h.ticker} className="font-medium">
                             {h.ticker}
                           </TickerLink>
-                          <span className="truncate text-[11px] text-muted-foreground">
+                          <span className="truncate text-[13px] sm:text-[11px] text-muted-foreground">
                             {h.name}
                           </span>
                         </div>
@@ -215,7 +215,7 @@ export function HoldingsTable({
                     >
                       <div className="flex flex-col items-end leading-tight">
                         <span>{fmtPct(m.dayChangePct)}</span>
-                        <span className="text-[10px] opacity-80">
+                        <span className="text-[12px] sm:text-[10px] opacity-80">
                           {fmtMoney(m.dayChangeBase, settings.baseCurrency, { compact: true })}
                         </span>
                       </div>
