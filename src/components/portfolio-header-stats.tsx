@@ -4,6 +4,7 @@ import { portfolioMetrics, fmtMoney, fmtPct } from "@/lib/portfolio-calc";
 import { ArrowDownRight, ArrowUpRight, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { CompactPriceIndicator } from "@/components/price-update-indicator";
 
 export function PortfolioHeaderStats() {
   const holdings = usePortfolio((s) => s.holdings);
@@ -42,7 +43,9 @@ export function PortfolioHeaderStats() {
           up={upTotal}
         />
       </div>
-      <Button
+      <div className="flex items-center gap-1">
+        <CompactPriceIndicator />
+        <Button
         variant="ghost"
         size="icon"
         onClick={() =>
@@ -55,7 +58,8 @@ export function PortfolioHeaderStats() {
         ) : (
           <Moon className="h-4 w-4" />
         )}
-      </Button>
+        </Button>
+      </div>
     </div>
   );
 }

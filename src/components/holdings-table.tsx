@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { AddHoldingDialog } from "@/components/add-holding-dialog";
 import { ImportCsvButton } from "@/components/import-csv-button";
 import { ExportCsvButton } from "@/components/export-csv-button";
+import { ExportExcelButton } from "@/components/export-excel-button";
 import { TickerLink } from "@/components/ticker-link";
 import { HoldingDetailsDrawer } from "@/components/holding-details-drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -115,6 +116,7 @@ export function HoldingsTable({
           />
           <ImportCsvButton />
           <ExportCsvButton />
+          <ExportExcelButton />
           <Button
             size="sm"
             onClick={() => {
