@@ -43,6 +43,7 @@ interface PortfolioState {
     history?: PortfolioSnapshot[];
     watchlist?: Holding[];
   }) => void;
+  rebuildHoldingsFromTransactions: () => void;
   resetAll: () => void;
 }
 
