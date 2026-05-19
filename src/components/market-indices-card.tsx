@@ -13,7 +13,7 @@ const INDEX_GROUPS: Array<{
   decimals?: number;
 }> = [
   { spot: "^GSPC", fut: "ES=F", label: "S&P 500", decimals: 2 },
-  { spot: "^IXIC", fut: "NQ=F", label: "Nasdaq", decimals: 2 },
+  { spot: "^NDX", fut: "NQ=F", label: "Nasdaq 100", decimals: 2 },
   { spot: "^DJI", fut: "YM=F", label: "Dow Jones", decimals: 0 },
   { spot: "GC=F", label: "Gold (XAU)", decimals: 1 },
   { spot: "CL=F", label: "WTI Crude", decimals: 2 },
@@ -169,8 +169,8 @@ export function MarketIndicesCard() {
         )}
         <p className="mt-2 text-[9px] leading-tight text-muted-foreground/70">
           Source: Yahoo Finance (regular-market price &amp; previous close).
-          Futures (ES/NQ/YM) change is vs prior settlement; cash indices vs
-          previous official close. Updates every 60s.
+          Futures (ES/NQ/YM) are paired to S&amp;P 500, Nasdaq 100, and Dow
+          contracts; changes are vs prior settlement. Updates every 60s.
         </p>
       </CardContent>
     </Card>
