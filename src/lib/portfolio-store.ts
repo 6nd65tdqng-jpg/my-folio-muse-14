@@ -238,6 +238,35 @@ export const usePortfolio = create<PortfolioState>()(
           };
         });
       },
+      updateTransaction: (id, patch) =>
+        set((s) => {
+          const tx = s.transactions.find((t) => t.id === id);
+          if (!tx) return s;
+          const reversed = reverseTransactionFromHoldings(s.holdings, tx);
+          const merged: Transaction = {
+            ...tx,
+            ...patch,
+            id: tx.id,
+            ticker: (patch.ticker ?? tx.ticker).toUpperCase(),
+          };
+          if (merged.quantity <= 0) return s;
+          const applied = applyTransactionToHoldings(reversed, merged);
+          return {
+            holdings: applied.holdings,
+            transactions: s.transactions.map((t) =>
+              t.id === id ? applied.transaction : t,
+            ),
+          };
+        }),
+      deleteTransaction: (id) =>
+        set((s) => {
+          const tx = s.transactions.find((t) => t.id === id);
+          if (!tx) return s;
+          return {
+            transactions: s.transactions.filter((t) => t.id !== id),
+            holdings: reverseTransactionFromHoldings(s.holdings, tx),
+          };
+        }),
       setPrices: (prices) =>
         set((s) => ({
           holdings: s.holdings.map((h) => {
