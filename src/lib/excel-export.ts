@@ -128,7 +128,7 @@ export async function exportToExcel(data: ExportData): Promise<void> {
       { header: "Total Value", key: "value", width: 18 },
     ];
     data.history.forEach((s) =>
-      history.addRow({ date: s.date, value: s.totalValue }),
+      history.addRow({ date: s.date, value: s.value }),
     );
     history.getColumn("value").numFmt = currencyFmt;
   }
