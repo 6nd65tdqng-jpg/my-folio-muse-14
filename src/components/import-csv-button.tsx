@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
-import { holdingsFromCsv } from "@/lib/csv-import";
+import { holdingsFromCsv, validateCsvText } from "@/lib/csv-import";
 import { usePortfolio } from "@/lib/portfolio-store";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
@@ -72,6 +72,22 @@ export function ImportCsvButton({
         } else {
           csv = reader.result as string;
         }
+        const validation = validateCsvText(csv);
+        if (!validation.valid) {
+          const preview = validation.errors
+            .slice(0, 3)
+            .map((e) => `Row ${e.row}: ${e.message}`)
+            .join("\n");
+          const more =
+            validation.errors.length > 3
+              ? `\n…and ${validation.errors.length - 3} more`
+              : "";
+          toast.error("Import validation failed", {
+            description: preview + more,
+          });
+          return;
+        }
+        validation.warnings.forEach((w) => toast.warning(w));
         const result = holdingsFromCsv(csv);
         if (result.holdings.length === 0) {
           toast.error("No valid rows found in file");
