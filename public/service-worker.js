@@ -1,5 +1,5 @@
-// Kill-switch worker: clear older app-shell caches and unregister so installed
-// Safari/Dock shortcuts stop serving stale builds. Keep this file network-only.
+// Kill-switch worker for any older build that registered /service-worker.js.
+// It clears stale app-shell caches and removes itself.
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
 });
