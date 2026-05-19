@@ -17,17 +17,6 @@ export interface ExtendedQuote {
 const CACHE_TTL_MS = 30_000;
 const cache = new Map<string, { at: number; data: ExtendedQuote | null }>();
 
-const INDEX_FUTURES: Record<string, string> = {
-  SPY: "ES=F",
-  VOO: "ES=F",
-  IVV: "ES=F",
-  SPLG: "ES=F",
-  QQQ: "NQ=F",
-  QQQM: "NQ=F",
-  DIA: "YM=F",
-  IWM: "RTY=F",
-};
-
 interface YahooMeta {
   regularMarketPrice?: number;
   chartPreviousClose?: number;
@@ -78,9 +67,8 @@ export const fetchExtendedQuote = createServerFn({ method: "POST" })
     }
 
     try {
-      const yahooSymbol = INDEX_FUTURES[data.symbol] ?? data.symbol;
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
-        yahooSymbol,
+        data.symbol,
       )}?interval=1m&range=1d&includePrePost=true`;
       const r = await fetch(url, {
         headers: { "User-Agent": "Mozilla/5.0 (compatible; PortfolioApp/1.0)" },
