@@ -15,6 +15,8 @@ export function AuthGate({ children }: Props) {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [code, setCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     // Set up listener BEFORE getSession (per Supabase docs).
@@ -45,6 +47,27 @@ export function AuthGate({ children }: Props) {
     setSent(true);
   };
 
+  const verifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = code.trim();
+    if (token.length < 6) {
+      toast.error("Enter the 6-digit code from the email");
+      return;
+    }
+    setVerifying(true);
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token,
+      type: "email",
+    });
+    setVerifying(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    // onAuthStateChange will flip session and render children.
+  };
+
   if (checking) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -64,21 +87,38 @@ export function AuthGate({ children }: Props) {
           </h1>
           <p className="text-sm text-muted-foreground">
             {sent
-              ? "Check your inbox and click the magic link to sign in. You'll stay signed in on this device."
+              ? "Check your email — you can either tap the magic link, or enter the 6-digit code below to sign in right here. The code is the easiest option if you've added this app to your Home Screen."
               : "Enter your email — we'll send you a magic link. No password needed."}
           </p>
         </div>
         {sent ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="rounded-md bg-muted p-3 text-sm text-foreground">
               Link sent to <span className="font-medium">{email}</span>
             </div>
+            <form onSubmit={verifyCode} className="space-y-3">
+              <Input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]*"
+                maxLength={6}
+                placeholder="6-digit code"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                autoFocus
+              />
+              <Button type="submit" className="w-full" disabled={verifying}>
+                {verifying ? "Verifying…" : "Sign in with code"}
+              </Button>
+            </form>
             <Button
               variant="outline"
               className="w-full"
               onClick={() => {
                 setSent(false);
                 setEmail("");
+                setCode("");
               }}
             >
               Use a different email
