@@ -85,6 +85,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "AM Portfolio Tracker" },
+      // iOS home-screen / standalone PWA meta
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Portfolio" },
+      { name: "theme-color", content: "#1e3a5f" },
       {
         name: "description",
         content:
