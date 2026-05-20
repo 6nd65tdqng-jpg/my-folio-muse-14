@@ -118,3 +118,37 @@ export function genSeedHistory(currentValue: number): PortfolioSnapshot[] {
   out[out.length - 1] = { ...out[out.length - 1], value: currentValue };
   return out;
 }
+
+/**
+ * Rescale a portfolio history series so its last point equals `currentValue`.
+ * Earlier points are scaled proportionally, preserving the relative shape of
+ * the series. This keeps the chart's endpoint always in sync with the
+ * computed Total Value KPI (which is derived live from holdings × prices ×
+ * FX), instead of being stuck on whatever value was baked into the persisted
+ * history at seed time.
+ */
+export function rescaleHistoryToCurrent(
+  history: PortfolioSnapshot[],
+  currentValue: number,
+): PortfolioSnapshot[] {
+  if (!history.length || !isFinite(currentValue) || currentValue <= 0) {
+    return history;
+  }
+  const last = history[history.length - 1]?.value ?? 0;
+  if (last <= 0) {
+    // No meaningful anchor — just override the last point.
+    return [
+      ...history.slice(0, -1),
+      { ...history[history.length - 1], value: currentValue },
+    ];
+  }
+  const k = currentValue / last;
+  if (Math.abs(k - 1) < 1e-6) return history;
+  return history.map((p, i) => ({
+    ...p,
+    value:
+      i === history.length - 1
+        ? currentValue
+        : Math.round(p.value * k * 100) / 100,
+  }));
+}
