@@ -19,6 +19,8 @@ import { PortfolioHeaderStats } from "@/components/portfolio-header-stats";
 import { MarketStatus } from "@/components/market-status";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/offline-indicator";
+import { AuthGate } from "@/components/auth-gate";
+import { useCloudSync } from "@/hooks/use-cloud-sync";
 
 function NotFoundComponent() {
   return (
@@ -161,7 +163,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
-        <AppShell />
+        <AuthGate>{() => <AppShell />}</AuthGate>
         <OfflineIndicator />
         <Toaster richColors position="top-right" />
       </ErrorBoundary>
@@ -171,12 +173,21 @@ function RootComponent() {
 
 function AppShell() {
   const theme = usePortfolio((s) => s.settings.theme);
+  const cloud = useCloudSync(true);
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "dark") root.classList.add("dark");
     else root.classList.remove("dark");
   }, [theme]);
   useLivePrices();
+
+  if (!cloud.ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4 text-center text-sm text-muted-foreground">
+        Loading your Cloud portfolio…
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider>
