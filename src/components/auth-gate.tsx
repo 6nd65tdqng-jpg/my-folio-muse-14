@@ -13,10 +13,10 @@ export function AuthGate({ children }: Props) {
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [code, setCode] = useState("");
-  const [verifying, setVerifying] = useState(false);
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     // Set up listener BEFORE getSession (per Supabase docs).
@@ -31,41 +31,84 @@ export function AuthGate({ children }: Props) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const sendLink = async (e: React.FormEvent) => {
+  const submitPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail || !password) return;
+    if (mode === "sign-up" && password.length < 6) {
+      toast.error("Use a password with at least 6 characters");
+      return;
+    }
+
+    setSending(true);
+    setNotice("");
+    const { error } =
+      mode === "sign-in"
+        ? await supabase.auth.signInWithPassword({
+            email: normalizedEmail,
+            password,
+          })
+        : await supabase.auth.signUp({
+            email: normalizedEmail,
+            password,
+            options: { emailRedirectTo: window.location.origin },
+          });
+    setSending(false);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    if (mode === "sign-up") {
+      setMode("sign-in");
+      setPassword("");
+      setNotice("Check your email to confirm the account, then come back here and sign in with your password.");
+      toast.success("Account created");
+    }
+  };
+
+  const resetPassword = async () => {
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) {
+      toast.error("Enter your email first");
+      return;
+    }
+
+    setSending(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setSending(false);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setNotice("Password reset email sent. Open it, set a password, then sign in here from the Home Screen app.");
+    toast.success("Password reset email sent");
+  };
+
+  const sendMagicLink = async () => {
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) {
+      toast.error("Enter your email first");
+      return;
+    }
+
     setSending(true);
     const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
+      email: normalizedEmail,
       options: { emailRedirectTo: window.location.origin },
     });
     setSending(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    setSent(true);
-  };
 
-  const verifyCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const token = code.trim();
-    if (token.length < 6) {
-      toast.error("Enter the 6-digit code from the email");
-      return;
-    }
-    setVerifying(true);
-    const { error } = await supabase.auth.verifyOtp({
-      email: email.trim(),
-      token,
-      type: "email",
-    });
-    setVerifying(false);
     if (error) {
       toast.error(error.message);
       return;
     }
-    // onAuthStateChange will flip session and render children.
+    setNotice("Magic link sent. If the Home Screen app asks again, use password sign-in instead.");
+    toast.success("Magic link sent");
   };
 
   if (checking) {
@@ -86,59 +129,58 @@ export function AuthGate({ children }: Props) {
             AM Portfolio Tracker
           </h1>
           <p className="text-sm text-muted-foreground">
-            {sent
-              ? "Check your email — you can either tap the magic link, or enter the 6-digit code below to sign in right here. The code is the easiest option if you've added this app to your Home Screen."
-              : "Enter your email — we'll send you a magic link. No password needed."}
+            Sign in with a password so the Home Screen app can keep you logged in.
           </p>
         </div>
-        {sent ? (
-          <div className="space-y-4">
-            <div className="rounded-md bg-muted p-3 text-sm text-foreground">
-              Link sent to <span className="font-medium">{email}</span>
-            </div>
-            <form onSubmit={verifyCode} className="space-y-3">
-              <Input
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                pattern="[0-9]*"
-                maxLength={6}
-                placeholder="6-digit code"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                autoFocus
-              />
-              <Button type="submit" className="w-full" disabled={verifying}>
-                {verifying ? "Verifying…" : "Sign in with code"}
-              </Button>
-            </form>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                setSent(false);
-                setEmail("");
-                setCode("");
-              }}
-            >
-              Use a different email
-            </Button>
+        {notice ? (
+          <div className="rounded-md bg-muted p-3 text-sm text-foreground">
+            {notice}
           </div>
-        ) : (
-          <form onSubmit={sendLink} className="space-y-3">
-            <Input
-              type="email"
-              required
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoFocus
-            />
-            <Button type="submit" className="w-full" disabled={sending}>
-              {sending ? "Sending…" : "Send magic link"}
-            </Button>
-          </form>
-        )}
+        ) : null}
+        <form onSubmit={submitPassword} className="space-y-3">
+          <Input
+            type="email"
+            required
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            autoFocus
+          />
+          <Input
+            type="password"
+            required
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
+            minLength={mode === "sign-up" ? 6 : undefined}
+          />
+          <Button type="submit" className="w-full" disabled={sending}>
+            {sending ? "Working…" : mode === "sign-in" ? "Sign in" : "Create account"}
+          </Button>
+        </form>
+        <div className="space-y-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={sending}
+            onClick={() => {
+              setMode(mode === "sign-in" ? "sign-up" : "sign-in");
+              setPassword("");
+              setNotice("");
+            }}
+          >
+            {mode === "sign-in" ? "Create an account" : "I already have an account"}
+          </Button>
+          <Button type="button" variant="ghost" className="w-full" disabled={sending} onClick={resetPassword}>
+            Set or reset password
+          </Button>
+          <Button type="button" variant="ghost" className="w-full" disabled={sending} onClick={sendMagicLink}>
+            Email me a magic link instead
+          </Button>
+        </div>
       </div>
     </div>
   );
