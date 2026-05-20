@@ -10,6 +10,7 @@ export function useCloudSync(enabled: boolean) {
   const [ready, setReady] = useState(!enabled);
   const loadedRef = useRef(false);
   const savingRef = useRef(false);
+  const saveTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!enabled) {
@@ -54,7 +55,7 @@ export function useCloudSync(enabled: boolean) {
     const unsubscribe = usePortfolio.subscribe((state) => {
       if (!loadedRef.current || savingRef.current) return;
       const data = state.getCloudData();
-      window.clearTimeout(savingRef.current as unknown as number);
+      if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
       const timeout = window.setTimeout(async () => {
         try {
           savingRef.current = true;
@@ -66,10 +67,13 @@ export function useCloudSync(enabled: boolean) {
           savingRef.current = false;
         }
       }, 800);
-      savingRef.current = timeout as unknown as boolean;
+      saveTimeoutRef.current = timeout;
     });
 
-    return unsubscribe;
+    return () => {
+      if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
+      unsubscribe();
+    };
   }, [enabled, saveCloud]);
 
   return { ready };
