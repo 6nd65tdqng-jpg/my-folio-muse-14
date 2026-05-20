@@ -9,8 +9,6 @@ import {
 import { rescaleHistoryToCurrent } from "@/lib/portfolio-seed";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
