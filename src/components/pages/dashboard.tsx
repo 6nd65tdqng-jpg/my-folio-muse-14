@@ -179,12 +179,12 @@ export function Dashboard() {
               Portfolio Value
             </CardTitle>
             <span className="text-xs text-muted-foreground">
-              Last {history.length} days
+              Last {displayHistory.length} days
             </span>
           </CardHeader>
           <CardContent className="h-56 sm:h-72 px-2 sm:px-6">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={history}>
+              <AreaChart data={displayHistory}>
                 <defs>
                   <linearGradient id="pv" x1="0" y1="0" x2="0" y2="1">
                     <stop
