@@ -4,7 +4,6 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
-  useLocation,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -20,8 +19,6 @@ import { PortfolioHeaderStats } from "@/components/portfolio-header-stats";
 import { MarketStatus } from "@/components/market-status";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/offline-indicator";
-import { AuthGate } from "@/components/auth-gate";
-import { useCloudSync } from "@/hooks/use-cloud-sync";
 
 function NotFoundComponent() {
   return (
@@ -160,19 +157,11 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const location = useLocation();
-  const isPublicAuthRoute = location.pathname === "/reset-password";
 
   return (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
-        {isPublicAuthRoute ? (
-          <Outlet />
-        ) : (
-          <AuthGate>
-            <AppShell />
-          </AuthGate>
-        )}
+        <AppShell />
         <OfflineIndicator />
         <Toaster richColors position="top-right" />
       </ErrorBoundary>
@@ -188,7 +177,6 @@ function AppShell() {
     else root.classList.remove("dark");
   }, [theme]);
   useLivePrices();
-  useCloudSync();
 
   return (
     <SidebarProvider>
