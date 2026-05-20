@@ -6,6 +6,7 @@ import type {
   PortfolioSnapshot,
   Settings,
   Currency,
+  PortfolioCloudData,
 } from "./portfolio-types";
 import {
   SEED_HOLDINGS,
@@ -39,6 +40,8 @@ interface PortfolioState {
   setPrices: (
     prices: Record<string, { price: number; prevClose?: number }>,
   ) => void;
+  replaceFromCloud: (data: PortfolioCloudData) => void;
+  getCloudData: () => PortfolioCloudData;
   setSettings: (s: Partial<Settings>) => void;
   setFxRate: (cur: Currency, rate: number) => void;
   pushSnapshot: (s: PortfolioSnapshot) => void;
@@ -321,6 +324,26 @@ export const usePortfolio = create<PortfolioState>()(
           lastPriceUpdate: new Date().toISOString(),
           priceError: null,
         })),
+      replaceFromCloud: (data) =>
+        set((s) => ({
+          holdings: data.holdings.filter((h) => h.quantity > 1e-9),
+          watchlist: data.watchlist ?? [],
+          transactions: data.transactions,
+          history: data.history ?? [],
+          settings: { ...defaultSettings, ...s.settings, ...(data.settings ?? {}) },
+          seedVersion: data.seedVersion ?? PORTFOLIO_SEED_VERSION,
+        })),
+      getCloudData: () => {
+        const s = get();
+        return {
+          seedVersion: PORTFOLIO_SEED_VERSION,
+          holdings: s.holdings,
+          watchlist: s.watchlist,
+          transactions: s.transactions,
+          history: s.history,
+          settings: s.settings,
+        };
+      },
       setSettings: (s) =>
         set((st) => ({ settings: { ...st.settings, ...s } })),
       setFxRate: (cur, rate) =>
