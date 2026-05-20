@@ -55,7 +55,11 @@ export function Dashboard() {
     [holdings, transactions, settings],
   );
 
-  const allocByHolding = m.rows
+  // Only include rows for positions you actually hold (quantity > 0).
+  // Otherwise sold-out tickers keep appearing in gainers / movers / allocation.
+  const activeRows = m.rows.filter((r) => r.h.quantity > 0);
+
+  const allocByHolding = activeRows
     .map((r) => ({
       name: r.h.ticker,
       value: r.m.valueBase,
@@ -64,17 +68,17 @@ export function Dashboard() {
 
   const allocByClass = (() => {
     const map = new Map<string, number>();
-    for (const r of m.rows) {
+    for (const r of activeRows) {
       const k = r.h.assetType === "crypto" ? "Crypto" : "Equities";
       map.set(k, (map.get(k) ?? 0) + r.m.valueBase);
     }
     return [...map.entries()].map(([name, value]) => ({ name, value }));
   })();
 
-  const top = [...m.rows].sort((a, b) => b.m.pnlBase - a.m.pnlBase);
+  const top = [...activeRows].sort((a, b) => b.m.pnlBase - a.m.pnlBase);
   const gainers = top.slice(0, 3);
   const losers = top.slice(-3).reverse();
-  const byDay = [...m.rows]
+  const byDay = [...activeRows]
     .filter((r) => r.h.prevClose && r.h.prevClose > 0)
     .sort((a, b) => b.m.dayChangePct - a.m.dayChangePct);
   const dayGainers = byDay.slice(0, 3).filter((r) => r.m.dayChangePct > 0);
