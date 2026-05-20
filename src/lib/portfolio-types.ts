@@ -40,3 +40,12 @@ export interface Settings {
   theme: "light" | "dark";
   fxRates: Partial<Record<Currency, number>>; // rate to USD
 }
+
+export interface PortfolioCloudData {
+  seedVersion?: number;
+  holdings: Holding[];
+  watchlist?: Holding[];
+  transactions: Transaction[];
+  history?: PortfolioSnapshot[];
+  settings?: Partial<Settings>;
+}
