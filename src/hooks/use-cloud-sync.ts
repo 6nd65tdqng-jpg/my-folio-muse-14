@@ -70,7 +70,10 @@ export function useCloudSync() {
         };
         const { error: upErr } = await supabase
           .from("portfolio_data")
-          .upsert({ user_id: userId, data: payload }, { onConflict: "user_id" });
+          .upsert(
+            { user_id: userId, data: payload as unknown as never },
+            { onConflict: "user_id" },
+          );
         if (upErr) console.error("[cloud-sync] initial push failed", upErr);
         else console.log("[cloud-sync] pushed local portfolio to cloud");
       }
@@ -123,7 +126,10 @@ export function useCloudSync() {
         };
         const { error } = await supabase
           .from("portfolio_data")
-          .upsert({ user_id: userId, data: payload }, { onConflict: "user_id" });
+          .upsert(
+            { user_id: userId, data: payload as unknown as never },
+            { onConflict: "user_id" },
+          );
         if (error) console.error("[cloud-sync] write failed", error);
       }, 800);
     });
