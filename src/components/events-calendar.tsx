@@ -70,6 +70,32 @@ function isTodayLocal(iso: string | undefined): boolean {
   return fmt.format(d) === fmt.format(new Date());
 }
 
+function fmtCountdown(iso: string | undefined, nowMs: number): string | null {
+  if (!iso) return null;
+  const target = new Date(iso).getTime();
+  if (Number.isNaN(target)) return null;
+  const diff = target - nowMs;
+  if (diff <= -30 * 60_000) return null;
+  if (diff <= 0) return "Live now";
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 60) return `in ${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  const rem = mins % 60;
+  if (hrs < 24) return rem > 0 ? `in ${hrs}h ${rem}m` : `in ${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  const h = hrs % 24;
+  return h > 0 ? `in ${days}d ${h}h` : `in ${days}d`;
+}
+
+function useNow(intervalMs = 60_000): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(t);
+  }, [intervalMs]);
+  return now;
+}
+
 export function useUpcomingEvents() {
   const holdings = usePortfolio((s) => s.holdings);
   const symbols = useMemo(
@@ -105,6 +131,7 @@ export function useUpcomingEvents() {
 
 export function EventsCalendarSidebar() {
   const events = useUpcomingEvents();
+  const now = useNow();
 
   if (events === null) {
     return (
@@ -136,12 +163,18 @@ export function EventsCalendarSidebar() {
             const localDate = fmtDateIn(e.datetimeUtc, localTz) ?? fmtDate(e.date);
             const sameTz = tzAbbrev(new Date(), localTz) === "EST" ||
               tzAbbrev(new Date(), localTz) === "EDT";
+            const countdown = fmtCountdown(e.datetimeUtc, now);
+            const isLive = countdown === "Live now";
             return (
               <li
                 key={e.id}
                 className={
                   "rounded-md border border-sidebar-border/60 px-2 py-1.5 text-[11px] leading-tight " +
-                  (isToday ? "bg-primary/10 border-primary/40" : "")
+                  (isLive
+                    ? "bg-destructive/10 border-destructive/40"
+                    : isToday
+                      ? "bg-primary/10 border-primary/40"
+                      : "")
                 }
                 title={`${e.title} — ${e.timeEt ?? ""}${
                   localTime && !sameTz ? ` · ${localTime} local` : ""
@@ -151,6 +184,18 @@ export function EventsCalendarSidebar() {
                   <span className="flex items-center gap-1 font-medium">
                     <Icon className="h-3 w-3 shrink-0" />
                     {e.symbol ?? "FOMC"}
+                    {countdown && (
+                      <span
+                        className={
+                          "ml-1 rounded-full px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide " +
+                          (isLive
+                            ? "bg-destructive/20 text-destructive"
+                            : "bg-muted text-muted-foreground")
+                        }
+                      >
+                        {isLive ? "Live" : "Scheduled"}
+                      </span>
+                    )}
                   </span>
                   <span className="font-mono text-[10px] text-muted-foreground">
                     {isToday ? "Today" : localDate}
@@ -161,6 +206,11 @@ export function EventsCalendarSidebar() {
                     <div className="truncate">
                       {etTime}
                       {e.timeLabel ? ` · ${e.timeLabel}` : ""}
+                      {countdown && (
+                        <span className="ml-1 font-mono text-foreground/80">
+                          · {countdown}
+                        </span>
+                      )}
                     </div>
                     {localTime && !sameTz && (
                       <div className="truncate font-mono text-foreground/70">
@@ -187,6 +237,7 @@ export function EventsCalendarSidebar() {
 
 export function TodaysEventsBanner() {
   const events = useUpcomingEvents();
+  const now = useNow();
   if (!events) return null;
   const todayEtKey = todayEt();
   const todays = events.filter((e) =>
@@ -206,12 +257,26 @@ export function TodaysEventsBanner() {
           const Icon = e.type === "fomc" ? Megaphone : FileBarChart2;
           const etTime = fmtTimeIn(e.datetimeUtc, "America/New_York");
           const localTime = fmtTimeIn(e.datetimeUtc, localTz);
+          const countdown = fmtCountdown(e.datetimeUtc, now);
+          const isLive = countdown === "Live now";
           return (
             <li key={e.id} className="flex items-center gap-1.5">
               <Icon className="h-3 w-3 shrink-0 text-primary" />
               <span className="font-medium">
                 {e.symbol ? `${e.symbol} earnings` : e.title}
               </span>
+              {countdown && (
+                <span
+                  className={
+                    "rounded-full px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide " +
+                    (isLive
+                      ? "bg-destructive/20 text-destructive"
+                      : "bg-primary/20 text-primary")
+                  }
+                >
+                  {isLive ? "Live" : countdown}
+                </span>
+              )}
               <span className="text-muted-foreground">
                 — {etTime ?? e.timeEt}
                 {localTime && !sameTz ? ` · ${localTime} local` : ""}
