@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Json } from "@/integrations/supabase/types";
 import type { PortfolioCloudData } from "@/lib/portfolio-types";
 
 const portfolioDataSchema = z.object({
@@ -31,7 +32,7 @@ export const saveCloudPortfolio = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("portfolio_data").upsert({
       user_id: context.userId,
-      data,
+      data: data as unknown as Json,
     });
 
     if (error) throw new Error(error.message);
