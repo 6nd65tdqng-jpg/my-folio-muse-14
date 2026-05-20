@@ -91,66 +91,54 @@ async function fetchFinnhubEarnings(
   apiKey: string,
 ): Promise<CalendarEvent[]> {
   if (symbols.length === 0) return [];
-  // Finnhub returns the whole window for a single symbol; query per-symbol so
-  // we only get rows we actually care about and stay under free-tier quotas.
-  const settled = await Promise.allSettled(
-    symbols.map(async (sym) => {
-      const url = `https://finnhub.io/api/v1/calendar/earnings?from=${from}&to=${to}&symbol=${encodeURIComponent(
-        sym,
-      )}&token=${apiKey}`;
-      const r = await fetch(url);
-      if (!r.ok) throw new Error(`${sym}: ${r.status}`);
-      const j = (await r.json()) as { earningsCalendar?: FinnhubEarningsRow[] };
-      const requested = sym.toUpperCase();
-      return (j.earningsCalendar ?? [])
-        // Finnhub occasionally returns rows for other symbols in the window;
-        // keep only the exact requested ticker.
-        .filter(
-          (row) =>
-            row.date && row.symbol?.toUpperCase() === requested,
-        )
-        .map((row): CalendarEvent => {
-          const hour = (row.hour ?? "").toLowerCase();
-          let hh = 12;
-          let mm = 0;
-          let label = "Time TBA";
-          let timeEt = "Time TBA";
-          if (hour === "bmo") {
-            hh = 8; mm = 30;
-            label = "Before open";
-            timeEt = "08:30 ET (before open)";
-          } else if (hour === "amc") {
-            hh = 16; mm = 5;
-            label = "After close";
-            timeEt = "16:05 ET (after close)";
-          } else if (/^\d{1,2}:\d{2}$/.test(hour)) {
-            const [h, m] = hour.split(":").map(Number);
-            hh = h; mm = m;
-            label = "During session";
-            timeEt = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")} ET`;
-          }
-          return {
-            id: `earn-${row.symbol}-${row.date}`,
-            type: "earnings",
-            title: `${row.symbol} earnings`,
-            symbol: row.symbol,
-            date: row.date!,
-            timeEt,
-            timeLabel: label,
-            datetimeUtc: etToUtcIso(row.date!, hh, mm),
-            detail:
-              row.epsEstimate != null
-                ? `EPS est ${row.epsEstimate}`
-                : undefined,
-          };
-        });
-    }),
-  );
-  const out: CalendarEvent[] = [];
-  for (const s of settled) {
-    if (s.status === "fulfilled") out.push(...s.value);
+  // Single bulk call returns every earnings row in the window. Per-symbol
+  // requests can blow past Finnhub's free-tier burst limit (and silently drop
+  // most tickers from the results). Filter client-side instead.
+  const wanted = new Set(symbols.map((s) => s.toUpperCase()));
+  const url = `https://finnhub.io/api/v1/calendar/earnings?from=${from}&to=${to}&token=${apiKey}`;
+  const r = await fetch(url);
+  if (!r.ok) {
+    console.warn("finnhub earnings calendar failed", r.status);
+    return [];
   }
-  return out;
+  const j = (await r.json()) as { earningsCalendar?: FinnhubEarningsRow[] };
+  const rows = (j.earningsCalendar ?? []).filter(
+    (row) =>
+      row.date && row.symbol && wanted.has(row.symbol.toUpperCase()),
+  );
+  return rows.map((row): CalendarEvent => {
+    const hour = (row.hour ?? "").toLowerCase();
+    let hh = 12;
+    let mm = 0;
+    let label = "Time TBA";
+    let timeEt = "Time TBA";
+    if (hour === "bmo") {
+      hh = 8; mm = 30;
+      label = "Before open";
+      timeEt = "08:30 ET (before open)";
+    } else if (hour === "amc") {
+      hh = 16; mm = 5;
+      label = "After close";
+      timeEt = "16:05 ET (after close)";
+    } else if (/^\d{1,2}:\d{2}$/.test(hour)) {
+      const [h, m] = hour.split(":").map(Number);
+      hh = h; mm = m;
+      label = "During session";
+      timeEt = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")} ET`;
+    }
+    return {
+      id: `earn-${row.symbol}-${row.date}`,
+      type: "earnings",
+      title: `${row.symbol} earnings`,
+      symbol: row.symbol,
+      date: row.date!,
+      timeEt,
+      timeLabel: label,
+      datetimeUtc: etToUtcIso(row.date!, hh, mm),
+      detail:
+        row.epsEstimate != null ? `EPS est ${row.epsEstimate}` : undefined,
+    };
+  });
 }
 
 export const fetchUpcomingEvents = createServerFn({ method: "POST" })
