@@ -172,66 +172,7 @@ export function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Portfolio Value
-            </CardTitle>
-            <span className="text-xs text-muted-foreground">
-              Last {displayHistory.length} days
-            </span>
-          </CardHeader>
-          <CardContent className="h-56 sm:h-72 px-2 sm:px-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={displayHistory}>
-                <defs>
-                  <linearGradient id="pv" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="0%"
-                      stopColor="var(--chart-2)"
-                      stopOpacity={0.4}
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor="var(--chart-2)"
-                      stopOpacity={0}
-                    />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="var(--border)"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                  tickFormatter={(d) => d.slice(5)}
-                  minTickGap={32}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                  tickFormatter={(v) =>
-                    new Intl.NumberFormat("en", {
-                      notation: "compact",
-                    }).format(v as number)
-                  }
-                  width={50}
-                />
-                <Tooltip content={<ChartTooltip currency={settings.baseCurrency} />} />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="var(--chart-2)"
-                  strokeWidth={2}
-                  fill="url(#pv)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Allocation</CardTitle>
