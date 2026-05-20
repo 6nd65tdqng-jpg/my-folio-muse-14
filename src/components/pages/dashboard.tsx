@@ -6,6 +6,7 @@ import {
   fmtPct,
   maxDrawdown,
 } from "@/lib/portfolio-calc";
+import { rescaleHistoryToCurrent } from "@/lib/portfolio-seed";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Area,
@@ -55,6 +56,15 @@ export function Dashboard() {
     [holdings, transactions, settings],
   );
 
+  // Anchor the persisted history series to the live Total Value so the chart
+  // endpoint and the KPI always match. The persisted history is a synthetic
+  // baseline; without rescaling it stays frozen at the seed value and the
+  // chart looks completely wrong vs the real portfolio.
+  const displayHistory = useMemo(
+    () => rescaleHistoryToCurrent(history, m.totalValue),
+    [history, m.totalValue],
+  );
+
   // Only include rows for positions you actually hold (quantity > 0).
   // Otherwise sold-out tickers keep appearing in gainers / movers / allocation.
   const activeRows = m.rows.filter((r) => r.h.quantity > 0);
@@ -83,8 +93,8 @@ export function Dashboard() {
     .sort((a, b) => b.m.dayChangePct - a.m.dayChangePct);
   const dayGainers = byDay.slice(0, 3).filter((r) => r.m.dayChangePct > 0);
   const dayLosers = byDay.slice(-3).reverse().filter((r) => r.m.dayChangePct < 0);
-  const mdd = maxDrawdown(history);
-  const ath = history.reduce((p, c) => (c.value > p ? c.value : p), 0);
+  const mdd = maxDrawdown(displayHistory);
+  const ath = displayHistory.reduce((p, c) => (c.value > p ? c.value : p), 0);
 
   return (
     <div className="space-y-4">
