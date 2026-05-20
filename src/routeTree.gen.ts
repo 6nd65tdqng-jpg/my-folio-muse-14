@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TransactionsRouteImport } from './routes/transactions'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as HoldingsRouteImport } from './routes/holdings'
 import { Route as EquitiesRouteImport } from './routes/equities'
@@ -28,11 +27,6 @@ const TransactionsRoute = TransactionsRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NewsRoute = NewsRouteImport.update({
@@ -79,7 +73,6 @@ export interface FileRoutesByFullPath {
   '/equities': typeof EquitiesRoute
   '/holdings': typeof HoldingsRoute
   '/news': typeof NewsRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/transactions': typeof TransactionsRoute
 }
@@ -91,7 +84,6 @@ export interface FileRoutesByTo {
   '/equities': typeof EquitiesRoute
   '/holdings': typeof HoldingsRoute
   '/news': typeof NewsRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/transactions': typeof TransactionsRoute
 }
@@ -104,7 +96,6 @@ export interface FileRoutesById {
   '/equities': typeof EquitiesRoute
   '/holdings': typeof HoldingsRoute
   '/news': typeof NewsRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/transactions': typeof TransactionsRoute
 }
@@ -118,7 +109,6 @@ export interface FileRouteTypes {
     | '/equities'
     | '/holdings'
     | '/news'
-    | '/reset-password'
     | '/settings'
     | '/transactions'
   fileRoutesByTo: FileRoutesByTo
@@ -130,7 +120,6 @@ export interface FileRouteTypes {
     | '/equities'
     | '/holdings'
     | '/news'
-    | '/reset-password'
     | '/settings'
     | '/transactions'
   id:
@@ -142,7 +131,6 @@ export interface FileRouteTypes {
     | '/equities'
     | '/holdings'
     | '/news'
-    | '/reset-password'
     | '/settings'
     | '/transactions'
   fileRoutesById: FileRoutesById
@@ -155,7 +143,6 @@ export interface RootRouteChildren {
   EquitiesRoute: typeof EquitiesRoute
   HoldingsRoute: typeof HoldingsRoute
   NewsRoute: typeof NewsRoute
-  ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
   TransactionsRoute: typeof TransactionsRoute
 }
@@ -174,13 +161,6 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/news': {
@@ -243,7 +223,6 @@ const rootRouteChildren: RootRouteChildren = {
   EquitiesRoute: EquitiesRoute,
   HoldingsRoute: HoldingsRoute,
   NewsRoute: NewsRoute,
-  ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
   TransactionsRoute: TransactionsRoute,
 }
