@@ -94,6 +94,10 @@ export function useCloudSync() {
         setTimeout(() => {
           suppressWrite.current = false;
         }, 0);
+        // Nudge useLivePrices to refetch — symbol set may be unchanged so its
+        // own change-detection wouldn't trigger a run, but currentPrice values
+        // we just hydrated could be 0/stale.
+        window.dispatchEvent(new Event("focus"));
       } else {
         // No remote row → push current local state (option A migration).
         const s = usePortfolio.getState();
