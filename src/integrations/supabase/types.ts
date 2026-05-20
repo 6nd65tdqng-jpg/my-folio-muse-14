@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      portfolio_data: {
+        Row: {
+          data: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          data?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          data?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       quote_cache: {
         Row: {
           prev_close: number
