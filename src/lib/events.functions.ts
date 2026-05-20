@@ -7,6 +7,8 @@ export interface CalendarEvent {
   symbol?: string;
   date: string; // YYYY-MM-DD (ET)
   timeEt?: string; // e.g. "14:00" or "BMO" / "AMC"
+  datetimeUtc?: string; // ISO 8601 UTC timestamp for the event start
+  timeLabel?: string; // human label, e.g. "Before open"
   detail?: string;
 }
 
@@ -49,7 +51,25 @@ function addDaysEt(base: string, days: number): string {
   return dt.toISOString().slice(0, 10);
 }
 
-const EARNINGS_CACHE_TTL_MS = 15 * 60 * 1000;
+// Build an ISO timestamp for the given ET wall-clock time on `dateEt`.
+// Handles EST (-05:00) vs EDT (-04:00) automatically.
+function etToUtcIso(dateEt: string, hh: number, mm: number): string {
+  const [y, m, d] = dateEt.split("-").map(Number);
+  // Probe ~noon ET to read the active offset for that day.
+  const probe = new Date(Date.UTC(y, m - 1, d, 17, 0, 0));
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    timeZoneName: "short",
+  }).formatToParts(probe);
+  const tz = parts.find((p) => p.type === "timeZoneName")?.value;
+  const offset = tz === "EDT" ? "-04:00" : "-05:00";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return new Date(
+    `${dateEt}T${pad(hh)}:${pad(mm)}:00${offset}`,
+  ).toISOString();
+}
+
+const EARNINGS_CACHE_TTL_MS = 5 * 60 * 1000;
 let earningsCache: {
   at: number;
   key: string;
@@ -81,33 +101,54 @@ async function fetchFinnhubEarnings(
       const r = await fetch(url);
       if (!r.ok) throw new Error(`${sym}: ${r.status}`);
       const j = (await r.json()) as { earningsCalendar?: FinnhubEarningsRow[] };
-      return (j.earningsCalendar ?? []).map((row): CalendarEvent => {
-        const when =
-          row.hour === "bmo"
-            ? "Before market open"
-            : row.hour === "amc"
-              ? "After market close"
-              : row.hour
-                ? row.hour
-                : "Time TBA";
-        return {
-          id: `earn-${row.symbol}-${row.date}`,
-          type: "earnings",
-          title: `${row.symbol} earnings`,
-          symbol: row.symbol,
-          date: row.date ?? "",
-          timeEt: when,
-          detail:
-            row.epsEstimate != null
-              ? `EPS est ${row.epsEstimate}`
-              : undefined,
-        };
-      });
+      const requested = sym.toUpperCase();
+      return (j.earningsCalendar ?? [])
+        // Finnhub occasionally returns rows for other symbols in the window;
+        // keep only the exact requested ticker.
+        .filter(
+          (row) =>
+            row.date && row.symbol?.toUpperCase() === requested,
+        )
+        .map((row): CalendarEvent => {
+          const hour = (row.hour ?? "").toLowerCase();
+          let hh = 12;
+          let mm = 0;
+          let label = "Time TBA";
+          let timeEt = "Time TBA";
+          if (hour === "bmo") {
+            hh = 8; mm = 30;
+            label = "Before open";
+            timeEt = "08:30 ET (before open)";
+          } else if (hour === "amc") {
+            hh = 16; mm = 5;
+            label = "After close";
+            timeEt = "16:05 ET (after close)";
+          } else if (/^\d{1,2}:\d{2}$/.test(hour)) {
+            const [h, m] = hour.split(":").map(Number);
+            hh = h; mm = m;
+            label = "During session";
+            timeEt = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")} ET`;
+          }
+          return {
+            id: `earn-${row.symbol}-${row.date}`,
+            type: "earnings",
+            title: `${row.symbol} earnings`,
+            symbol: row.symbol,
+            date: row.date!,
+            timeEt,
+            timeLabel: label,
+            datetimeUtc: etToUtcIso(row.date!, hh, mm),
+            detail:
+              row.epsEstimate != null
+                ? `EPS est ${row.epsEstimate}`
+                : undefined,
+          };
+        });
     }),
   );
   const out: CalendarEvent[] = [];
   for (const s of settled) {
-    if (s.status === "fulfilled") out.push(...s.value.filter((e) => e.date));
+    if (s.status === "fulfilled") out.push(...s.value);
   }
   return out;
 }
@@ -149,6 +190,8 @@ export const fetchUpcomingEvents = createServerFn({ method: "POST" })
       title: "FOMC Meeting",
       date: m.date,
       timeEt: "14:00 ET (statement) · 14:30 ET (press conf)",
+      timeLabel: "Statement 14:00 ET",
+      datetimeUtc: etToUtcIso(m.date, 14, 0),
       detail: m.label,
     }));
 
@@ -162,9 +205,21 @@ export const fetchUpcomingEvents = createServerFn({ method: "POST" })
       }
     }
 
-    const events = [...fomcEvents, ...earnings].sort((a, b) =>
-      a.date.localeCompare(b.date),
-    );
+    // Drop events whose start time has already passed (e.g. an "AMC today"
+    // report that already happened — it shouldn't keep showing as upcoming).
+    const nowMs = Date.now();
+    const events = [...fomcEvents, ...earnings]
+      .filter((e) => {
+        if (!e.datetimeUtc) return true;
+        // 30-min grace so live events stay visible during the event window.
+        return new Date(e.datetimeUtc).getTime() + 30 * 60_000 > nowMs;
+      })
+      .sort((a, b) => {
+        const at = a.datetimeUtc ? new Date(a.datetimeUtc).getTime() : 0;
+        const bt = b.datetimeUtc ? new Date(b.datetimeUtc).getTime() : 0;
+        if (at !== bt) return at - bt;
+        return a.date.localeCompare(b.date);
+      });
     earningsCache = { at: Date.now(), key: cacheKey, data: events };
     return { events, source: "Federal Reserve + Finnhub" };
   });
