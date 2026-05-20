@@ -156,6 +156,11 @@ export function useLivePrices() {
     document.addEventListener("visibilitychange", maybeRun);
     window.addEventListener("focus", maybeRun);
     window.addEventListener("pageshow", maybeRun);
+    // Cloud-sync hydration finished — refetch unconditionally (bypass throttle).
+    const onHydrated = () => {
+      run();
+    };
+    window.addEventListener("cloud-sync:hydrated", onHydrated);
 
     return () => {
       cancelled = true;
@@ -163,6 +168,7 @@ export function useLivePrices() {
       document.removeEventListener("visibilitychange", maybeRun);
       window.removeEventListener("focus", maybeRun);
       window.removeEventListener("pageshow", maybeRun);
+      window.removeEventListener("cloud-sync:hydrated", onHydrated);
     };
   }, [holdings, watchlist, setPrices, interval]);
 }

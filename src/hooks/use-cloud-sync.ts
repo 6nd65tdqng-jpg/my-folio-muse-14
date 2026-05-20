@@ -43,13 +43,49 @@ export function useCloudSync() {
         };
         suppressWrite.current = true;
         const s = usePortfolio.getState();
+        // Merge live price fields (currentPrice/prevClose/lastUpdated) from the
+        // local in-memory state into the cloud copy. The cloud copy may have
+        // been written before prices were fetched (currentPrice=0), but the
+        // current tab already has fresh quotes — don't overwrite them with 0.
+        const mergePrices = <T extends {
+          ticker: string;
+          coingeckoId?: string;
+          currentPrice?: number;
+          prevClose?: number;
+          lastUpdated?: string;
+        }>(
+          incoming: T[],
+          local: T[],
+        ): T[] => {
+          const key = (h: T) => h.coingeckoId ?? h.ticker.toUpperCase();
+          const localByKey = new Map(local.map((h) => [key(h), h]));
+          return incoming.map((h) => {
+            const l = localByKey.get(key(h));
+            if (!l) return h;
+            return {
+              ...h,
+              currentPrice:
+                h.currentPrice && h.currentPrice > 0
+                  ? h.currentPrice
+                  : l.currentPrice ?? h.currentPrice,
+              prevClose: h.prevClose ?? l.prevClose,
+              lastUpdated: h.lastUpdated ?? l.lastUpdated,
+            };
+          });
+        };
+        const incomingHoldings = Array.isArray(remote.holdings)
+          ? (remote.holdings as typeof s.holdings)
+          : s.holdings;
+        const incomingWatchlist = Array.isArray(remote.watchlist)
+          ? (remote.watchlist as typeof s.watchlist)
+          : s.watchlist;
         usePortfolio.setState({
-          holdings: Array.isArray(remote.holdings) ? (remote.holdings as never) : s.holdings,
+          holdings: mergePrices(incomingHoldings, s.holdings),
           transactions: Array.isArray(remote.transactions)
             ? (remote.transactions as never)
             : s.transactions,
           history: Array.isArray(remote.history) ? (remote.history as never) : s.history,
-          watchlist: Array.isArray(remote.watchlist) ? (remote.watchlist as never) : s.watchlist,
+          watchlist: mergePrices(incomingWatchlist, s.watchlist),
           settings: remote.settings
             ? { ...s.settings, ...(remote.settings as object) }
             : s.settings,
@@ -58,6 +94,10 @@ export function useCloudSync() {
         setTimeout(() => {
           suppressWrite.current = false;
         }, 0);
+        // Nudge useLivePrices to refetch — symbol set may be unchanged so its
+        // own change-detection wouldn't trigger a run, but currentPrice values
+        // we just hydrated could be 0/stale.
+        window.dispatchEvent(new Event("cloud-sync:hydrated"));
       } else {
         // No remote row → push current local state (option A migration).
         const s = usePortfolio.getState();
