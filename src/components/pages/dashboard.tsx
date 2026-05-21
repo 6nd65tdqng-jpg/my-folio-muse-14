@@ -13,6 +13,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -27,6 +28,7 @@ import { HoldingsTable } from "@/components/holdings-table";
 import { TickerLink } from "@/components/ticker-link";
 import { MarketIndicesCard } from "@/components/market-indices-card";
 import { TodaysEventsBanner } from "@/components/events-calendar";
+import { NewsTicker } from "@/components/news-ticker";
 import {
   Carousel,
   CarouselContent,
