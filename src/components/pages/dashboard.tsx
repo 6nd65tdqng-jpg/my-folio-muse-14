@@ -352,53 +352,6 @@ function KpiCard({
   );
 }
 
-function MoverList({
-  rows,
-  currency,
-  direction,
-}: {
-  rows: ReturnType<typeof portfolioMetrics>["rows"];
-  currency: string;
-  direction: "up" | "down";
-}) {
-  if (rows.length === 0)
-    return <p className="text-sm text-muted-foreground">No positions yet.</p>;
-  return (
-    <ul className="space-y-2">
-      {rows.map((r) => (
-        <li
-          key={r.h.id}
-          className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-accent/50"
-        >
-          <div className="flex flex-col leading-tight">
-            <TickerLink ticker={r.h.ticker} className="text-sm font-medium">
-              {r.h.ticker}
-            </TickerLink>
-            <span className="text-[11px] text-muted-foreground">
-              {r.h.name}
-            </span>
-          </div>
-          <div className="text-right">
-            <div
-              className={cn(
-                "font-mono text-sm font-semibold tabular-nums",
-                direction === "up"
-                  ? "text-[var(--success)]"
-                  : "text-destructive",
-              )}
-            >
-              {fmtMoney(r.m.pnlBase, currency, { compact: true })}
-            </div>
-            <div className="font-mono text-[11px] text-muted-foreground tabular-nums">
-              {fmtPct(r.m.pnlPct)}
-            </div>
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 function DayMoversCard({
   dayChange,
   dayChangePct,
