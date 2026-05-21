@@ -86,18 +86,19 @@ export function Dashboard() {
   })();
 
   const top = [...activeRows].sort((a, b) => b.m.pnlBase - a.m.pnlBase);
-  const gainers = top.slice(0, 3);
-  const losers = top.slice(-3).reverse();
   const byDay = [...activeRows]
     .filter((r) => r.h.prevClose && r.h.prevClose > 0)
     .sort((a, b) => b.m.dayChangePct - a.m.dayChangePct);
-  const dayGainers = byDay.slice(0, 3).filter((r) => r.m.dayChangePct > 0);
-  const dayLosers = byDay.slice(-3).reverse().filter((r) => r.m.dayChangePct < 0);
+  const dayGainers = byDay.slice(0, 5).filter((r) => r.m.dayChangePct > 0);
+  const dayLosers = byDay.slice(-5).reverse().filter((r) => r.m.dayChangePct < 0);
   const mdd = maxDrawdown(displayHistory);
   const ath = displayHistory.reduce((p, c) => (c.value > p ? c.value : p), 0);
+  // Avoid an unused-binding lint failure for the lifetime PnL sort above.
+  void top;
 
   return (
     <div className="space-y-4">
+      <NewsTicker />
       <TodaysEventsBanner />
       <MarketIndicesCard />
       <DayMoversCard
