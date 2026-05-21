@@ -454,15 +454,14 @@ function DayMoverList({
                 direction === "up" ? "text-[var(--success)]" : "text-destructive",
               )}
             >
-              {fmtMoney(r.m.dayChangeBase, currency, { compact: true })}
+              {fmtPct(r.m.dayChangePct)}
             </div>
             <div
               className={cn(
-                "font-mono text-[11px] tabular-nums",
-                direction === "up" ? "text-[var(--success)]" : "text-destructive",
+                "font-mono text-[11px] tabular-nums text-muted-foreground",
               )}
             >
-              {fmtPct(r.m.dayChangePct)}
+              {fmtMoney(r.m.dayChangeBase, currency, { compact: true })}
             </div>
           </div>
         </li>
