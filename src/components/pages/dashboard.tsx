@@ -13,6 +13,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -27,6 +28,7 @@ import { HoldingsTable } from "@/components/holdings-table";
 import { TickerLink } from "@/components/ticker-link";
 import { MarketIndicesCard } from "@/components/market-indices-card";
 import { TodaysEventsBanner } from "@/components/events-calendar";
+import { NewsTicker } from "@/components/news-ticker";
 import {
   Carousel,
   CarouselContent,
@@ -83,19 +85,17 @@ export function Dashboard() {
     return [...map.entries()].map(([name, value]) => ({ name, value }));
   })();
 
-  const top = [...activeRows].sort((a, b) => b.m.pnlBase - a.m.pnlBase);
-  const gainers = top.slice(0, 3);
-  const losers = top.slice(-3).reverse();
   const byDay = [...activeRows]
     .filter((r) => r.h.prevClose && r.h.prevClose > 0)
     .sort((a, b) => b.m.dayChangePct - a.m.dayChangePct);
-  const dayGainers = byDay.slice(0, 3).filter((r) => r.m.dayChangePct > 0);
-  const dayLosers = byDay.slice(-3).reverse().filter((r) => r.m.dayChangePct < 0);
+  const dayGainers = byDay.slice(0, 5).filter((r) => r.m.dayChangePct > 0);
+  const dayLosers = byDay.slice(-5).reverse().filter((r) => r.m.dayChangePct < 0);
   const mdd = maxDrawdown(displayHistory);
   const ath = displayHistory.reduce((p, c) => (c.value > p ? c.value : p), 0);
 
   return (
     <div className="space-y-4">
+      <NewsTicker />
       <TodaysEventsBanner />
       <MarketIndicesCard />
       <DayMoversCard
@@ -173,9 +173,11 @@ export function Dashboard() {
       <div className="grid grid-cols-1 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Allocation</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Allocation by Holding
+            </CardTitle>
           </CardHeader>
-          <CardContent className="h-56 sm:h-72">
+          <CardContent className="h-72 sm:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -183,9 +185,15 @@ export function Dashboard() {
                   dataKey="value"
                   nameKey="name"
                   innerRadius="55%"
-                  outerRadius="90%"
+                  outerRadius="75%"
                   paddingAngle={2}
                   stroke="var(--card)"
+                  label={({ name, percent }) =>
+                    percent && percent > 0.04
+                      ? `${name} ${(percent * 100).toFixed(0)}%`
+                      : ""
+                  }
+                  labelLine={false}
                 >
                   {allocByHolding.map((_, i) => (
                     <Cell
@@ -202,137 +210,57 @@ export function Dashboard() {
                     />
                   }
                 />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 max-md:hidden lg:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">By Asset Class</CardTitle>
-          </CardHeader>
-          <CardContent className="h-48 sm:h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={allocByClass}
-                  dataKey="value"
-                  nameKey="name"
-                  outerRadius="80%"
-                  stroke="var(--card)"
-                >
-                  {allocByClass.map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill={CHART_COLORS[i % CHART_COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip
-                  content={
-                    <PieTooltip
-                      total={m.totalValue}
-                      currency={settings.baseCurrency}
-                    />
-                  }
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  iconType="circle"
+                  wrapperStyle={{ fontSize: 11 }}
                 />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <TrendingUp className="h-4 w-4 text-[var(--success)]" /> Top
-              Gainers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MoverList
-              rows={gainers}
-              currency={settings.baseCurrency}
-              direction="up"
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <TrendingDown className="h-4 w-4 text-destructive" /> Top Losers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MoverList
-              rows={losers}
-              currency={settings.baseCurrency}
-              direction="down"
-            />
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Mobile: swipeable trio */}
-      <Carousel opts={{ align: "start" }} className="md:hidden">
-        <CarouselContent className="-ml-3">
-          <CarouselItem className="basis-[88%] pl-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">By Asset Class</CardTitle>
-              </CardHeader>
-              <CardContent className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={allocByClass}
-                      dataKey="value"
-                      nameKey="name"
-                      outerRadius="80%"
-                      stroke="var(--card)"
-                    >
-                      {allocByClass.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      content={
-                        <PieTooltip total={m.totalValue} currency={settings.baseCurrency} />
-                      }
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </CarouselItem>
-          <CarouselItem className="basis-[88%] pl-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                  <TrendingUp className="h-4 w-4 text-[var(--success)]" /> Top Gainers
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MoverList rows={gainers} currency={settings.baseCurrency} direction="up" />
-              </CardContent>
-            </Card>
-          </CarouselItem>
-          <CarouselItem className="basis-[88%] pl-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                  <TrendingDown className="h-4 w-4 text-destructive" /> Top Losers
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MoverList rows={losers} currency={settings.baseCurrency} direction="down" />
-              </CardContent>
-            </Card>
-          </CarouselItem>
-        </CarouselContent>
-      </Carousel>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">
+            Allocation by Asset Class
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="h-56 sm:h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={allocByClass}
+                dataKey="value"
+                nameKey="name"
+                outerRadius="75%"
+                stroke="var(--card)"
+                label={({ name, percent }) =>
+                  percent ? `${name} ${(percent * 100).toFixed(0)}%` : ""
+                }
+                labelLine={false}
+              >
+                {allocByClass.map((_, i) => (
+                  <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                content={
+                  <PieTooltip total={m.totalValue} currency={settings.baseCurrency} />
+                }
+              />
+              <Legend
+                verticalAlign="bottom"
+                height={28}
+                iconType="circle"
+                wrapperStyle={{ fontSize: 11 }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-2">
@@ -421,53 +349,6 @@ function KpiCard({
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function MoverList({
-  rows,
-  currency,
-  direction,
-}: {
-  rows: ReturnType<typeof portfolioMetrics>["rows"];
-  currency: string;
-  direction: "up" | "down";
-}) {
-  if (rows.length === 0)
-    return <p className="text-sm text-muted-foreground">No positions yet.</p>;
-  return (
-    <ul className="space-y-2">
-      {rows.map((r) => (
-        <li
-          key={r.h.id}
-          className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-accent/50"
-        >
-          <div className="flex flex-col leading-tight">
-            <TickerLink ticker={r.h.ticker} className="text-sm font-medium">
-              {r.h.ticker}
-            </TickerLink>
-            <span className="text-[11px] text-muted-foreground">
-              {r.h.name}
-            </span>
-          </div>
-          <div className="text-right">
-            <div
-              className={cn(
-                "font-mono text-sm font-semibold tabular-nums",
-                direction === "up"
-                  ? "text-[var(--success)]"
-                  : "text-destructive",
-              )}
-            >
-              {fmtMoney(r.m.pnlBase, currency, { compact: true })}
-            </div>
-            <div className="font-mono text-[11px] text-muted-foreground tabular-nums">
-              {fmtPct(r.m.pnlPct)}
-            </div>
-          </div>
-        </li>
-      ))}
-    </ul>
   );
 }
 
@@ -573,15 +454,14 @@ function DayMoverList({
                 direction === "up" ? "text-[var(--success)]" : "text-destructive",
               )}
             >
-              {fmtMoney(r.m.dayChangeBase, currency, { compact: true })}
+              {fmtPct(r.m.dayChangePct)}
             </div>
             <div
               className={cn(
-                "font-mono text-[11px] tabular-nums",
-                direction === "up" ? "text-[var(--success)]" : "text-destructive",
+                "font-mono text-[11px] tabular-nums text-muted-foreground",
               )}
             >
-              {fmtPct(r.m.dayChangePct)}
+              {fmtMoney(r.m.dayChangeBase, currency, { compact: true })}
             </div>
           </div>
         </li>
