@@ -131,12 +131,39 @@ export const fetchGeneralMarketNews = createServerFn({ method: "POST" })
     const key = process.env.MARKETAUX_API_KEY;
     if (!key) return { items: [], error: "MARKETAUX_API_KEY not configured" };
     try {
-      const url = `https://api.marketaux.com/v1/news/all?filter_entities=true&language=en&limit=20&api_token=${key}`;
+      // Top business/market headlines from major English-language outlets only.
+      const domains = [
+        "reuters.com",
+        "bloomberg.com",
+        "cnbc.com",
+        "wsj.com",
+        "ft.com",
+        "marketwatch.com",
+        "barrons.com",
+        "finance.yahoo.com",
+        "investing.com",
+        "businessinsider.com",
+      ].join(",");
+      const url =
+        `https://api.marketaux.com/v1/news/all` +
+        `?countries=us,gb,ca,au` +
+        `&language=en` +
+        `&domains=${encodeURIComponent(domains)}` +
+        `&filter_entities=true` +
+        `&must_have_entities=true` +
+        `&sort=published_desc` +
+        `&limit=20` +
+        `&api_token=${key}`;
       const r = await fetch(url);
       if (!r.ok) return { items: [], error: `Marketaux ${r.status}` };
       const json = (await r.json()) as MarketauxResponse;
       if (json.error) return { items: [], error: json.error.message ?? "Marketaux error" };
-      return { items: normalize(json.data ?? []) };
+      // Extra safety: drop anything with non-ASCII-heavy titles (defensive).
+      const items = normalize(json.data ?? []).filter((it) => {
+        const nonAscii = (it.headline.match(/[^\x00-\x7F]/g) ?? []).length;
+        return nonAscii / Math.max(it.headline.length, 1) < 0.2;
+      });
+      return { items };
     } catch (e) {
       return { items: [], error: e instanceof Error ? e.message : "fetch failed" };
     }

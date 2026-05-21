@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Newspaper } from "lucide-react";
 import { fetchGeneralMarketNews, type NewsItem } from "@/lib/news.functions";
 
-const STORAGE_KEY = "lumenfolio.market-ticker.v1";
+const STORAGE_KEY = "lumenfolio.market-ticker.v2";
 const REFRESH_MS = 30 * 60 * 1000;
 
 interface Cached {
