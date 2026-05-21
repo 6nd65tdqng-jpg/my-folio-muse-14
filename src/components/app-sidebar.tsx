@@ -10,6 +10,7 @@ import {
   Bitcoin,
   Newspaper,
   Sparkles,
+  CalendarClock,
 } from "lucide-react";
 import {
   Sidebar,
@@ -24,6 +25,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { EventsCalendarSidebar } from "@/components/events-calendar";
+import { useEarningsBadgeCount } from "@/hooks/use-earnings-badge";
+import { Badge } from "@/components/ui/badge";
 
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -32,6 +35,7 @@ const items = [
   { title: "Holdings", url: "/holdings", icon: Wallet },
   { title: "Transactions", url: "/transactions", icon: Receipt },
   { title: "Analytics", url: "/analytics", icon: LineChart },
+  { title: "Earnings", url: "/earnings", icon: CalendarClock },
   { title: "News", url: "/news", icon: Newspaper },
   { title: "Assistant", url: "/assistant", icon: Sparkles },
   { title: "Settings", url: "/settings", icon: SettingsIcon },
@@ -42,6 +46,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const path = useRouterState({ select: (r) => r.location.pathname });
   const isActive = (u: string) => (u === "/" ? path === "/" : path.startsWith(u));
+  const earningsBadge = useEarningsBadgeCount();
 
   return (
     <Sidebar collapsible="icon">
@@ -71,7 +76,19 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <Link to={item.url} className="flex items-center gap-2">
                       <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                      {!collapsed && (
+                        <span className="flex flex-1 items-center justify-between">
+                          <span>{item.title}</span>
+                          {item.url === "/earnings" && earningsBadge > 0 && (
+                            <Badge
+                              variant="secondary"
+                              className="h-4 px-1.5 text-[10px]"
+                            >
+                              {earningsBadge}
+                            </Badge>
+                          )}
+                        </span>
+                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
