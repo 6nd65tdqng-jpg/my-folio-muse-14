@@ -14,6 +14,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as HoldingsRouteImport } from './routes/holdings'
 import { Route as EquitiesRouteImport } from './routes/equities'
+import { Route as EarningsRouteImport } from './routes/earnings'
 import { Route as CryptoRouteImport } from './routes/crypto'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
@@ -44,6 +45,11 @@ const EquitiesRoute = EquitiesRouteImport.update({
   path: '/equities',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EarningsRoute = EarningsRouteImport.update({
+  id: '/earnings',
+  path: '/earnings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CryptoRoute = CryptoRouteImport.update({
   id: '/crypto',
   path: '/crypto',
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/crypto': typeof CryptoRoute
+  '/earnings': typeof EarningsRoute
   '/equities': typeof EquitiesRoute
   '/holdings': typeof HoldingsRoute
   '/news': typeof NewsRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/crypto': typeof CryptoRoute
+  '/earnings': typeof EarningsRoute
   '/equities': typeof EquitiesRoute
   '/holdings': typeof HoldingsRoute
   '/news': typeof NewsRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/crypto': typeof CryptoRoute
+  '/earnings': typeof EarningsRoute
   '/equities': typeof EquitiesRoute
   '/holdings': typeof HoldingsRoute
   '/news': typeof NewsRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/assistant'
     | '/crypto'
+    | '/earnings'
     | '/equities'
     | '/holdings'
     | '/news'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/assistant'
     | '/crypto'
+    | '/earnings'
     | '/equities'
     | '/holdings'
     | '/news'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/assistant'
     | '/crypto'
+    | '/earnings'
     | '/equities'
     | '/holdings'
     | '/news'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   AssistantRoute: typeof AssistantRoute
   CryptoRoute: typeof CryptoRoute
+  EarningsRoute: typeof EarningsRoute
   EquitiesRoute: typeof EquitiesRoute
   HoldingsRoute: typeof HoldingsRoute
   NewsRoute: typeof NewsRoute
@@ -184,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EquitiesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/earnings': {
+      id: '/earnings'
+      path: '/earnings'
+      fullPath: '/earnings'
+      preLoaderRoute: typeof EarningsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/crypto': {
       id: '/crypto'
       path: '/crypto'
@@ -220,6 +240,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   AssistantRoute: AssistantRoute,
   CryptoRoute: CryptoRoute,
+  EarningsRoute: EarningsRoute,
   EquitiesRoute: EquitiesRoute,
   HoldingsRoute: HoldingsRoute,
   NewsRoute: NewsRoute,
@@ -229,3 +250,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
