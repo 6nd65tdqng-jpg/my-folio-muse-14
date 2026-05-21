@@ -85,7 +85,6 @@ export function Dashboard() {
     return [...map.entries()].map(([name, value]) => ({ name, value }));
   })();
 
-  const top = [...activeRows].sort((a, b) => b.m.pnlBase - a.m.pnlBase);
   const byDay = [...activeRows]
     .filter((r) => r.h.prevClose && r.h.prevClose > 0)
     .sort((a, b) => b.m.dayChangePct - a.m.dayChangePct);
@@ -93,8 +92,6 @@ export function Dashboard() {
   const dayLosers = byDay.slice(-5).reverse().filter((r) => r.m.dayChangePct < 0);
   const mdd = maxDrawdown(displayHistory);
   const ath = displayHistory.reduce((p, c) => (c.value > p ? c.value : p), 0);
-  // Avoid an unused-binding lint failure for the lifetime PnL sort above.
-  void top;
 
   return (
     <div className="space-y-4">
