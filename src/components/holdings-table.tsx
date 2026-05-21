@@ -129,8 +129,83 @@ export function HoldingsTable({
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="w-full min-w-[920px] caption-bottom border-separate border-spacing-0 text-[15px] sm:text-sm">
+        {/* Mobile/narrow: stacked card list — no horizontal scrolling needed */}
+        <div className="divide-y divide-border md:hidden">
+          {rows.rows.length === 0 && (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              No positions found.
+            </p>
+          )}
+          {rows.rows.map(({ h, m }) => {
+            const alloc = rows.total > 0 ? (m.valueBase / rows.total) * 100 : 0;
+            const dayUp = m.dayChange >= 0;
+            const pnlUp = m.pnl >= 0;
+            return (
+              <button
+                key={h.id}
+                type="button"
+                onClick={() => {
+                  setDetailHolding(h);
+                  setDetailOpen(true);
+                }}
+                className="flex w-full items-center gap-3 px-3 py-3 text-left active:bg-accent/40"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-secondary-foreground">
+                  {h.ticker.slice(0, 2)}
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col leading-tight">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{h.ticker}</span>
+                    <span className="truncate text-[11px] text-muted-foreground">
+                      {h.name}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <span className="font-mono tabular-nums">
+                      {fmtNum(h.quantity, 4)} @{" "}
+                      {fmtMoney(h.currentPrice, h.currency)}
+                    </span>
+                    <span>·</span>
+                    <span className="font-mono tabular-nums">
+                      {alloc.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="flex shrink-0 flex-col items-end leading-tight">
+                  <span className="font-mono text-sm font-semibold tabular-nums">
+                    {fmtMoney(m.valueBase, settings.baseCurrency, {
+                      compact: true,
+                    })}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-mono text-[11px] tabular-nums",
+                      dayUp
+                        ? "text-[var(--success)]"
+                        : "text-destructive",
+                    )}
+                  >
+                    {fmtPct(m.dayChangePct)} today
+                  </span>
+                  <span
+                    className={cn(
+                      "font-mono text-[11px] tabular-nums",
+                      pnlUp
+                        ? "text-[var(--success)]"
+                        : "text-destructive",
+                    )}
+                  >
+                    {fmtPct(m.pnlPct)} P&L
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Desktop: full table */}
+        <div className="hidden w-full max-w-full overflow-x-auto md:block">
+          <table className="w-full min-w-[920px] caption-bottom border-separate border-spacing-0 text-sm">
             <TableHeader>
               <TableRow>
                 <Th
