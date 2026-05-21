@@ -142,7 +142,12 @@ async function fetchFinnhubEarnings(
 }
 
 export const fetchUpcomingEvents = createServerFn({ method: "POST" })
-  .inputValidator((input: { symbols: string[]; days?: number }) => {
+  .inputValidator((input: {
+    symbols: string[];
+    days?: number;
+    from?: string;
+    includePast?: boolean;
+  }) => {
     const symbols = Array.isArray(input?.symbols)
       ? input.symbols
           .filter(
@@ -154,13 +159,19 @@ export const fetchUpcomingEvents = createServerFn({ method: "POST" })
           )
           .slice(0, 50)
       : [];
-    const days = Math.min(60, Math.max(1, Math.floor(Number(input?.days) || 30)));
-    return { symbols, days };
+    const days = Math.min(90, Math.max(1, Math.floor(Number(input?.days) || 30)));
+    const from =
+      typeof input?.from === "string" && /^\d{4}-\d{2}-\d{2}$/.test(input.from)
+        ? input.from
+        : undefined;
+    const includePast = Boolean(input?.includePast);
+    return { symbols, days, from, includePast };
   })
   .handler(async ({ data }): Promise<{ events: CalendarEvent[]; source: string }> => {
     const today = todayEt();
-    const to = addDaysEt(today, data.days);
-    const cacheKey = `${today}|${data.days}|${data.symbols.sort().join(",")}`;
+    const from = data.from ?? today;
+    const to = addDaysEt(from, data.days);
+    const cacheKey = `${from}|${data.days}|${data.includePast ? 1 : 0}|${data.symbols.sort().join(",")}`;
 
     if (
       earningsCache &&
@@ -171,7 +182,7 @@ export const fetchUpcomingEvents = createServerFn({ method: "POST" })
     }
 
     const fomcEvents: CalendarEvent[] = FOMC.filter(
-      (m) => m.date >= today && m.date <= to,
+      (m) => m.date >= from && m.date <= to,
     ).map((m) => ({
       id: `fomc-${m.date}`,
       type: "fomc",
@@ -187,7 +198,7 @@ export const fetchUpcomingEvents = createServerFn({ method: "POST" })
     const key = process.env.FINNHUB_API_KEY;
     if (key && data.symbols.length > 0) {
       try {
-        earnings = await fetchFinnhubEarnings(data.symbols, today, to, key);
+        earnings = await fetchFinnhubEarnings(data.symbols, from, to, key);
       } catch (e) {
         console.warn("earnings fetch failed", e);
       }
@@ -198,6 +209,7 @@ export const fetchUpcomingEvents = createServerFn({ method: "POST" })
     const nowMs = Date.now();
     const events = [...fomcEvents, ...earnings]
       .filter((e) => {
+        if (data.includePast) return true;
         if (!e.datetimeUtc) return true;
         // 30-min grace so live events stay visible during the event window.
         return new Date(e.datetimeUtc).getTime() + 30 * 60_000 > nowMs;

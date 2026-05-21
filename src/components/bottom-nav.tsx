@@ -6,6 +6,7 @@ import {
   LineChart,
   Sparkles,
   Settings as SettingsIcon,
+  CalendarClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -14,6 +15,7 @@ import { AssistantChat } from "@/components/assistant-chat";
 const NAV = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Holdings", url: "/holdings", icon: Wallet },
+  { title: "Earnings", url: "/earnings", icon: CalendarClock },
   { title: "Analytics", url: "/analytics", icon: LineChart },
   { title: "Settings", url: "/settings", icon: SettingsIcon },
 ] as const;
