@@ -176,9 +176,11 @@ export function Dashboard() {
       <div className="grid grid-cols-1 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Allocation</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Allocation by Holding
+            </CardTitle>
           </CardHeader>
-          <CardContent className="h-56 sm:h-72">
+          <CardContent className="h-72 sm:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -186,9 +188,15 @@ export function Dashboard() {
                   dataKey="value"
                   nameKey="name"
                   innerRadius="55%"
-                  outerRadius="90%"
+                  outerRadius="75%"
                   paddingAngle={2}
                   stroke="var(--card)"
+                  label={({ name, percent }) =>
+                    percent && percent > 0.04
+                      ? `${name} ${(percent * 100).toFixed(0)}%`
+                      : ""
+                  }
+                  labelLine={false}
                 >
                   {allocByHolding.map((_, i) => (
                     <Cell
@@ -205,137 +213,57 @@ export function Dashboard() {
                     />
                   }
                 />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 max-md:hidden lg:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">By Asset Class</CardTitle>
-          </CardHeader>
-          <CardContent className="h-48 sm:h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={allocByClass}
-                  dataKey="value"
-                  nameKey="name"
-                  outerRadius="80%"
-                  stroke="var(--card)"
-                >
-                  {allocByClass.map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill={CHART_COLORS[i % CHART_COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip
-                  content={
-                    <PieTooltip
-                      total={m.totalValue}
-                      currency={settings.baseCurrency}
-                    />
-                  }
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  iconType="circle"
+                  wrapperStyle={{ fontSize: 11 }}
                 />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <TrendingUp className="h-4 w-4 text-[var(--success)]" /> Top
-              Gainers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MoverList
-              rows={gainers}
-              currency={settings.baseCurrency}
-              direction="up"
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <TrendingDown className="h-4 w-4 text-destructive" /> Top Losers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MoverList
-              rows={losers}
-              currency={settings.baseCurrency}
-              direction="down"
-            />
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Mobile: swipeable trio */}
-      <Carousel opts={{ align: "start" }} className="md:hidden">
-        <CarouselContent className="-ml-3">
-          <CarouselItem className="basis-[88%] pl-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">By Asset Class</CardTitle>
-              </CardHeader>
-              <CardContent className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={allocByClass}
-                      dataKey="value"
-                      nameKey="name"
-                      outerRadius="80%"
-                      stroke="var(--card)"
-                    >
-                      {allocByClass.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      content={
-                        <PieTooltip total={m.totalValue} currency={settings.baseCurrency} />
-                      }
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </CarouselItem>
-          <CarouselItem className="basis-[88%] pl-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                  <TrendingUp className="h-4 w-4 text-[var(--success)]" /> Top Gainers
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MoverList rows={gainers} currency={settings.baseCurrency} direction="up" />
-              </CardContent>
-            </Card>
-          </CarouselItem>
-          <CarouselItem className="basis-[88%] pl-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                  <TrendingDown className="h-4 w-4 text-destructive" /> Top Losers
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MoverList rows={losers} currency={settings.baseCurrency} direction="down" />
-              </CardContent>
-            </Card>
-          </CarouselItem>
-        </CarouselContent>
-      </Carousel>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">
+            Allocation by Asset Class
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="h-56 sm:h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={allocByClass}
+                dataKey="value"
+                nameKey="name"
+                outerRadius="75%"
+                stroke="var(--card)"
+                label={({ name, percent }) =>
+                  percent ? `${name} ${(percent * 100).toFixed(0)}%` : ""
+                }
+                labelLine={false}
+              >
+                {allocByClass.map((_, i) => (
+                  <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                content={
+                  <PieTooltip total={m.totalValue} currency={settings.baseCurrency} />
+                }
+              />
+              <Legend
+                verticalAlign="bottom"
+                height={28}
+                iconType="circle"
+                wrapperStyle={{ fontSize: 11 }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-2">
