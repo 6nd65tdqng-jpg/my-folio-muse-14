@@ -30,6 +30,7 @@ import { MarketIndicesCard } from "@/components/market-indices-card";
 import { TodaysEventsBanner } from "@/components/events-calendar";
 import { NewsTicker } from "@/components/news-ticker";
 import { UpcomingEarningsWidget } from "@/components/upcoming-earnings-widget";
+import { CalendarCard } from "@/components/calendar-card";
 import {
   Carousel,
   CarouselContent,
@@ -99,7 +100,10 @@ export function Dashboard() {
       <NewsTicker />
       <TodaysEventsBanner />
       <MarketIndicesCard />
-      <UpcomingEarningsWidget />
+      <div className="grid gap-4 md:grid-cols-2">
+        <CalendarCard />
+        <UpcomingEarningsWidget />
+      </div>
       <DayMoversCard
         dayChange={m.dayChange}
         dayChangePct={m.dayChangePct}
