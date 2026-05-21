@@ -567,7 +567,7 @@ function EarningsCard({
             variant="ghost"
             className="h-7 gap-1 text-xs"
           >
-            <Link to="/news" search={{ q: ticker } as never}>
+            <Link to="/news">
               <Newspaper className="h-3.5 w-3.5" /> View News
             </Link>
           </Button>
