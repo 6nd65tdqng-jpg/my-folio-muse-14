@@ -1,5 +1,6 @@
-// Kill-switch worker for any older build that registered /service-worker.js.
-// It clears stale app-shell caches and removes itself.
+// Silent kill-switch worker for any older build that registered
+// /service-worker.js. Clears stale caches and unregisters — does NOT
+// navigate clients (that caused installed PWAs to reload in a loop).
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
 });
@@ -14,17 +15,6 @@ self.addEventListener("activate", (event) => {
       await self.clients.claim();
       const keys = await caches.keys();
       await Promise.all(keys.map((key) => caches.delete(key)));
-      const clients = await self.clients.matchAll({
-        type: "window",
-        includeUncontrolled: true,
-      });
-      await Promise.allSettled(
-        clients.map((client) => {
-          const url = new URL(client.url);
-          url.searchParams.set("sw-cleanup", Date.now().toString());
-          return client.navigate(url.toString());
-        }),
-      );
       await self.registration.unregister();
     })(),
   );
