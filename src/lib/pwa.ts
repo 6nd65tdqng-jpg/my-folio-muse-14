@@ -26,19 +26,11 @@ export function registerServiceWorker(): void {
   if (typeof window === "undefined") return;
   if (!("serviceWorker" in navigator)) return;
 
-  if (isUnsafeContext()) {
-    // Defensive: if a SW was somehow registered in this context, remove it
-    // so the preview/editor never serves stale shells.
-    navigator.serviceWorker.getRegistrations().then((regs) => {
-      regs.forEach((r) => r.unregister());
-    });
-    return;
-  }
-
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/sw.js", { scope: "/" })
-      .catch((err) => console.warn("SW registration failed:", err));
+  // This app is now manifest-only for installability. Do not register a new
+  // service worker; just remove any older one so installed PWAs stop using a
+  // stale cached shell.
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((r) => r.unregister());
   });
 }
 
