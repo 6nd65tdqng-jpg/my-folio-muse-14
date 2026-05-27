@@ -5,9 +5,8 @@ self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
 });
 
-self.addEventListener("fetch", (event) => {
-  event.respondWith(fetch(event.request));
-});
+// Intentionally NO fetch handler — a pass-through `fetch(event.request)`
+// proxies every request through the SW and tanks load performance.
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
