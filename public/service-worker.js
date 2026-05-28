@@ -1,6 +1,6 @@
 // One-time kill-switch worker for any older build that registered
-// /service-worker.js. Clears stale caches, forces one network reload,
-// then unregisters. The `sw-cleanup` guard prevents loops.
+// /service-worker.js. Clears stale caches, unregisters, then attempts
+// one capped reload. Never wait indefinitely on navigation.
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
 });
@@ -19,16 +19,23 @@ self.addEventListener("activate", (event) => {
         type: "window",
         includeUncontrolled: true,
       });
+      await self.registration.unregister();
+
       await Promise.all(
-        clients.map((client) => {
+        clients.map(async (client) => {
           const url = new URL(client.url);
-          if (url.searchParams.has("sw-cleanup")) return Promise.resolve(client);
+          if (url.searchParams.has("sw-cleanup")) return;
           url.searchParams.set("sw-cleanup", Date.now().toString());
-          return client.navigate(url.toString());
+          try {
+            await Promise.race([
+              client.navigate(url.toString()),
+              new Promise((resolve) => setTimeout(resolve, 1200)),
+            ]);
+          } catch {
+            // If a platform blocks client navigation, unregistering is enough.
+          }
         }),
       );
-
-      await self.registration.unregister();
     })(),
   );
 });
