@@ -12,4 +12,9 @@ export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
+  vite: {
+    define: {
+      __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    },
+  },
 });

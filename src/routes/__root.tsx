@@ -20,6 +20,7 @@ import { MarketStatus } from "@/components/market-status";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { AuthGate } from "@/components/auth-gate";
+import { VersionBanner } from "@/components/version-banner";
 import { useCloudSync } from "@/hooks/use-cloud-sync";
 
 function NotFoundComponent() {
@@ -165,6 +166,7 @@ function RootComponent() {
       <ErrorBoundary>
         <AuthGate>{() => <AppShell />}</AuthGate>
         <OfflineIndicator />
+        <VersionBanner />
         <Toaster richColors position="top-right" />
       </ErrorBoundary>
     </QueryClientProvider>
