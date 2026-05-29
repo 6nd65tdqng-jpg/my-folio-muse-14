@@ -1,7 +1,14 @@
-// One-time kill-switch worker: clears stale app-shell caches, unregisters,
-// then attempts one capped reload. Never wait indefinitely on navigation.
+// One-time kill-switch worker: clears stale app-shell caches, navigates open
+// windows to a fresh URL, then unregisters. Navigation must happen before
+// unregistering so already-installed PWAs get a chance to leave the stale shell.
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    event.waitUntil(self.skipWaiting());
+  }
 });
 
 // Intentionally NO fetch handler — adding one (even a pass-through
@@ -19,7 +26,6 @@ self.addEventListener("activate", (event) => {
         type: "window",
         includeUncontrolled: true,
       });
-      await self.registration.unregister();
 
       await Promise.all(
         clients.map(async (client) => {
@@ -36,6 +42,8 @@ self.addEventListener("activate", (event) => {
           }
         }),
       );
+
+      await self.registration.unregister();
     })(),
   );
 });
