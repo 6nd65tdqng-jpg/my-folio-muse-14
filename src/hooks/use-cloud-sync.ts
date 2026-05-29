@@ -28,10 +28,27 @@ export function useCloudSync(enabled: boolean) {
         const cloud = await loadCloud();
         if (cancelled) return;
 
+        const local = usePortfolio.getState().getCloudData();
+
         if (cloud.data) {
-          usePortfolio.getState().replaceFromCloud(cloud.data);
+          // Safety net against the data-loss bug: if the local device holds
+          // transactions that never made it to the cloud (e.g. a sell entered
+          // right before a reload), keep the local copy and push it up instead
+          // of overwriting it with stale cloud data.
+          const cloudIds = new Set(
+            ((cloud.data.transactions ?? []) as { id?: string }[]).map((t) => t.id),
+          );
+          const localExtra = (
+            (local.transactions ?? []) as { id?: string }[]
+          ).filter((t) => t.id && !cloudIds.has(t.id));
+
+          if (localExtra.length > 0) {
+            await saveCloud({ data: local });
+          } else {
+            usePortfolio.getState().replaceFromCloud(cloud.data);
+          }
         } else {
-          await saveCloud({ data: usePortfolio.getState().getCloudData() });
+          await saveCloud({ data: local });
         }
 
         loadedRef.current = true;
