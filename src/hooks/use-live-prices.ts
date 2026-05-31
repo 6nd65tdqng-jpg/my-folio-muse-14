@@ -177,5 +177,5 @@ export function useLivePrices(enabled = true) {
       window.removeEventListener("pageshow", maybeRun);
       window.removeEventListener("cloud-sync:hydrated", onHydrated);
     };
-  }, [enabled, holdings, watchlist, setPrices, setPricesFetching, interval]);
+  }, [enabled, holdings, watchlist, setPrices, setPricesFetching, setPriceError, interval]);
 }
