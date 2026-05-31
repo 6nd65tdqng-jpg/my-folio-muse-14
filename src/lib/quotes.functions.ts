@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 60 * 1000; // 1 minute
 
 interface FinnhubQuote {
   c: number; // current
@@ -126,14 +126,14 @@ async function fetchCoinGeckoHistory(
 }
 
 export const fetchStockQuotes = createServerFn({ method: "POST" })
-  .inputValidator((input: { symbols: string[] }) => {
+  .inputValidator((input: { symbols: string[]; forceRefresh?: boolean }) => {
     if (!input || !Array.isArray(input.symbols)) {
       throw new Error("symbols array required");
     }
     const clean = input.symbols
       .filter((s) => typeof s === "string" && s.length > 0 && s.length <= 20)
       .slice(0, 100);
-    return { symbols: clean };
+    return { symbols: clean, forceRefresh: Boolean(input.forceRefresh) };
   })
   .handler(async ({ data }): Promise<{ quotes: QuoteResult[]; error?: string }> => {
     if (data.symbols.length === 0) return { quotes: [] };
@@ -159,7 +159,7 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
     const staleSymbols: string[] = [];
     for (const sym of data.symbols) {
       const hit = cacheMap.get(sym);
-      if (hit && now - new Date(hit.updated_at).getTime() < CACHE_TTL_MS) {
+      if (!data.forceRefresh && hit && now - new Date(hit.updated_at).getTime() < CACHE_TTL_MS) {
         results.push({ symbol: sym, price: hit.price, prevClose: hit.prev_close });
       } else {
         staleSymbols.push(sym);
