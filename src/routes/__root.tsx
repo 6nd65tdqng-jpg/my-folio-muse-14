@@ -181,7 +181,7 @@ function AppShell() {
     if (theme === "dark") root.classList.add("dark");
     else root.classList.remove("dark");
   }, [theme]);
-  useLivePrices();
+  useLivePrices(cloud.ready);
 
   if (!cloud.ready) {
     return (
