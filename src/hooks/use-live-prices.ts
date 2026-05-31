@@ -3,6 +3,8 @@ import { usePortfolio } from "@/lib/portfolio-store";
 import { fetchStockQuotes } from "@/lib/quotes.functions";
 import { fetchWithThrottle, rateLimiters } from "@/lib/rate-limiter";
 
+const FOREGROUND_REFRESH_THROTTLE_MS = 60_000;
+
 // US equities regular session: Mon–Fri 09:30–16:00 America/New_York.
 // Uses Intl to read ET wall-clock so DST is handled automatically.
 function isUsMarketOpen(now: Date = new Date()): boolean {
@@ -48,7 +50,7 @@ export function useLivePrices() {
       return isUsMarketOpen() ? baseMs : offHoursMs;
     }
 
-    async function run() {
+    async function run(forceRefresh = false) {
       lastRun.current = Date.now();
       setPricesFetching(true);
       setPriceError(null);
@@ -95,7 +97,7 @@ export function useLivePrices() {
         if (stockSymbols.length > 0) {
           try {
             const { quotes } = await fetchStockQuotes({
-              data: { symbols: stockSymbols },
+              data: { symbols: stockSymbols, forceRefresh },
             });
             for (const q of quotes) {
               prices[q.symbol] = { price: q.price, prevClose: q.prevClose };
@@ -120,7 +122,7 @@ export function useLivePrices() {
     function schedule() {
       if (cancelled) return;
       timer = setTimeout(async () => {
-        await run();
+        await run(true);
         schedule();
       }, nextDelayMs());
     }
@@ -141,7 +143,7 @@ export function useLivePrices() {
       .join("|");
     if (symbolsKey && symbolsKey !== lastSymbolsKey.current) {
       lastSymbolsKey.current = symbolsKey;
-      run();
+      run(true);
     }
     schedule();
 
@@ -150,15 +152,15 @@ export function useLivePrices() {
     // when the user toggles quickly.
     function maybeRun() {
       if (document.visibilityState !== "visible") return;
-      if (Date.now() - lastRun.current < 15_000) return;
-      run();
+      if (Date.now() - lastRun.current < FOREGROUND_REFRESH_THROTTLE_MS) return;
+      run(true);
     }
     document.addEventListener("visibilitychange", maybeRun);
     window.addEventListener("focus", maybeRun);
     window.addEventListener("pageshow", maybeRun);
     // Cloud-sync hydration finished — refetch unconditionally (bypass throttle).
     const onHydrated = () => {
-      run();
+      run(true);
     };
     window.addEventListener("cloud-sync:hydrated", onHydrated);
 
