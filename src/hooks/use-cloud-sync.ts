@@ -4,6 +4,16 @@ import { toast } from "sonner";
 import { getCloudPortfolio, saveCloudPortfolio } from "@/lib/cloud-portfolio.functions";
 import { usePortfolio } from "@/lib/portfolio-store";
 
+function syncSignature(data: ReturnType<typeof usePortfolio.getState>) {
+  return JSON.stringify({
+    holdings: data.holdings.map(({ currentPrice, prevClose, lastUpdated, ...h }) => h),
+    watchlist: data.watchlist.map(({ currentPrice, prevClose, lastUpdated, ...h }) => h),
+    transactions: data.transactions,
+    history: data.history,
+    settings: data.settings,
+  });
+}
+
 export function useCloudSync(enabled: boolean) {
   const loadCloud = useServerFn(getCloudPortfolio);
   const saveCloud = useServerFn(saveCloudPortfolio);
@@ -53,6 +63,7 @@ export function useCloudSync(enabled: boolean) {
 
         loadedRef.current = true;
         setReady(true);
+        window.dispatchEvent(new Event("cloud-sync:hydrated"));
       } catch (error) {
         console.error(error);
         toast.error("Cloud sync couldn't start. Your local data is still on this device.");
@@ -101,8 +112,12 @@ export function useCloudSync(enabled: boolean) {
       }
     }
 
-    const unsubscribe = usePortfolio.subscribe(() => {
+    const unsubscribe = usePortfolio.subscribe((state, previousState) => {
       if (!loadedRef.current) return;
+      // Price ticks update volatile quote fields every refresh. Saving those
+      // back to Cloud creates avoidable network work and makes the app feel
+      // laggy, so only persist user-owned portfolio changes.
+      if (syncSignature(state) === syncSignature(previousState)) return;
       if (savingRef.current) {
         pending = true;
         return;
