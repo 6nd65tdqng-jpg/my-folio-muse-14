@@ -24,7 +24,7 @@ function isUsMarketOpen(now: Date = new Date()): boolean {
   return mins >= 9 * 60 + 30 && mins < 16 * 60;
 }
 
-export function useLivePrices() {
+export function useLivePrices(enabled = true) {
   const holdings = usePortfolio((s) => s.holdings);
   const watchlist = usePortfolio((s) => s.watchlist);
   const setPrices = usePortfolio((s) => s.setPrices);
@@ -35,6 +35,11 @@ export function useLivePrices() {
   const lastSymbolsKey = useRef("");
 
   useEffect(() => {
+    if (!enabled) {
+      setPricesFetching(false);
+      return;
+    }
+
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -172,5 +177,5 @@ export function useLivePrices() {
       window.removeEventListener("pageshow", maybeRun);
       window.removeEventListener("cloud-sync:hydrated", onHydrated);
     };
-  }, [holdings, watchlist, setPrices, interval]);
+  }, [enabled, holdings, watchlist, setPrices, setPricesFetching, interval]);
 }
