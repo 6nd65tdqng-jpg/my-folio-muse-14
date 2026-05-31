@@ -425,6 +425,8 @@ export const usePortfolio = create<PortfolioState>()(
           ...defaultSettings,
           ...((persistedState as Partial<PortfolioState>)?.settings ?? {}),
         },
+        lastPriceUpdate:
+          (persistedState as Partial<PortfolioState>)?.lastPriceUpdate ?? null,
         seedVersion: PORTFOLIO_SEED_VERSION,
       }),
       onRehydrateStorage: () => (state) => {
