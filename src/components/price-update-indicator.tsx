@@ -31,10 +31,10 @@ export function CompactPriceIndicator() {
     return (
       <div
         title={label}
-        className="flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-muted-foreground sm:w-auto"
+        className="flex h-8 shrink-0 items-center gap-1 rounded-md px-1.5 text-muted-foreground sm:w-auto"
       >
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="hidden font-mono text-[10px] tabular-nums lg:inline">
+        <span className="hidden font-mono text-xs tabular-nums lg:inline">
           Refreshing
         </span>
       </div>
@@ -44,14 +44,14 @@ export function CompactPriceIndicator() {
   return (
     <div
       title={label}
-      className="flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-muted-foreground"
+      className="flex h-8 shrink-0 items-center gap-1 rounded-md px-1.5 text-muted-foreground"
     >
       {lastPriceUpdate ? (
         <CheckCircle2 className="h-3.5 w-3.5 text-[var(--success)]" />
       ) : (
         <Clock3 className="h-3.5 w-3.5" />
       )}
-      <span className="font-mono text-[10px] tabular-nums sm:text-[11px]">
+      <span className="font-mono text-xs tabular-nums">
         {lastPriceUpdate ? formatRefreshTime(lastPriceUpdate) : "--:--"}
       </span>
     </div>
