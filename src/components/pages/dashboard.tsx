@@ -179,7 +179,7 @@ export function Dashboard() {
       <div className="grid grid-cols-1 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-base font-semibold">
               Allocation by Holding
             </CardTitle>
           </CardHeader>
@@ -230,7 +230,7 @@ export function Dashboard() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">
+          <CardTitle className="text-base font-semibold">
             Allocation by Asset Class
           </CardTitle>
         </CardHeader>
@@ -270,7 +270,7 @@ export function Dashboard() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">
+          <CardTitle className="text-base font-semibold">
             Contribution to P&L
           </CardTitle>
         </CardHeader>
@@ -333,16 +333,16 @@ function KpiCard({
   return (
     <Card>
       <CardContent className="space-y-1 p-4">
-        <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">
           {label}
         </div>
-        <div className="font-mono text-lg font-semibold tabular-nums sm:text-2xl">
+        <div className="font-mono text-xl font-semibold tabular-nums sm:text-2xl">
           {value}
         </div>
         {sub && (
           <div
             className={cn(
-              "flex items-center gap-1 font-mono text-xs tabular-nums",
+              "flex items-center gap-1 font-mono text-sm tabular-nums",
               tone === "up" && "text-[var(--success)]",
               tone === "down" && "text-destructive",
               tone === "neutral" && "text-muted-foreground",
@@ -376,7 +376,7 @@ function DayMoversCard({
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
         <div className="space-y-1">
-          <CardTitle className="text-sm font-medium">Today</CardTitle>
+          <CardTitle className="text-base font-semibold">Today</CardTitle>
           <div className="flex items-baseline gap-2">
             <span
               className={cn(
@@ -451,7 +451,7 @@ function DayMoverList({
             <TickerLink ticker={r.h.ticker} className="text-sm font-medium">
               {r.h.ticker}
             </TickerLink>
-            <span className="text-[11px] text-muted-foreground">{r.h.name}</span>
+            <span className="text-xs text-muted-foreground">{r.h.name}</span>
           </div>
           <div className="text-right">
             <div
@@ -464,7 +464,7 @@ function DayMoverList({
             </div>
             <div
               className={cn(
-                "font-mono text-[11px] tabular-nums text-muted-foreground",
+                "font-mono text-xs tabular-nums text-muted-foreground",
               )}
             >
               {fmtMoney(r.m.dayChangeBase, currency, { compact: true })}

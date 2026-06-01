@@ -106,7 +106,7 @@ export function HoldingsTable({
   return (
     <Card className="min-w-0 overflow-hidden">
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="text-sm font-medium">Holdings</CardTitle>
+        <CardTitle className="text-base font-semibold">Holdings</CardTitle>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             placeholder="Search ticker or name…"
@@ -155,12 +155,12 @@ export function HoldingsTable({
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col leading-tight">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{h.ticker}</span>
-                    <span className="truncate text-[11px] text-muted-foreground">
+                    <span className="text-base font-semibold">{h.ticker}</span>
+                    <span className="truncate text-sm text-muted-foreground">
                       {h.name}
                     </span>
                   </div>
-                  <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <div className="mt-0.5 flex items-center gap-2 text-sm text-muted-foreground">
                     <span className="font-mono tabular-nums">
                       {fmtNum(h.quantity, 4)} @{" "}
                       {fmtMoney(h.currentPrice, h.currency)}
@@ -172,14 +172,14 @@ export function HoldingsTable({
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-col items-end leading-tight">
-                  <span className="font-mono text-sm font-semibold tabular-nums">
+                  <span className="font-mono text-base font-semibold tabular-nums">
                     {fmtMoney(m.valueBase, settings.baseCurrency, {
                       compact: true,
                     })}
                   </span>
                   <span
                     className={cn(
-                      "font-mono text-[11px] tabular-nums",
+                      "font-mono text-sm tabular-nums",
                       dayUp
                         ? "text-[var(--success)]"
                         : "text-destructive",
@@ -189,7 +189,7 @@ export function HoldingsTable({
                   </span>
                   <span
                     className={cn(
-                      "font-mono text-[11px] tabular-nums",
+                      "font-mono text-sm tabular-nums",
                       pnlUp
                         ? "text-[var(--success)]"
                         : "text-destructive",
