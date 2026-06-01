@@ -179,7 +179,7 @@ export function Dashboard() {
       <div className="grid grid-cols-1 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-base font-semibold">
               Allocation by Holding
             </CardTitle>
           </CardHeader>
@@ -230,7 +230,7 @@ export function Dashboard() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">
+          <CardTitle className="text-base font-semibold">
             Allocation by Asset Class
           </CardTitle>
         </CardHeader>
@@ -270,7 +270,7 @@ export function Dashboard() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">
+          <CardTitle className="text-base font-semibold">
             Contribution to P&L
           </CardTitle>
         </CardHeader>
@@ -376,7 +376,7 @@ function DayMoversCard({
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
         <div className="space-y-1">
-          <CardTitle className="text-sm font-medium">Today</CardTitle>
+          <CardTitle className="text-base font-semibold">Today</CardTitle>
           <div className="flex items-baseline gap-2">
             <span
               className={cn(

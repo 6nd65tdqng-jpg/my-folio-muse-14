@@ -106,7 +106,7 @@ export function HoldingsTable({
   return (
     <Card className="min-w-0 overflow-hidden">
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="text-sm font-medium">Holdings</CardTitle>
+        <CardTitle className="text-base font-semibold">Holdings</CardTitle>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             placeholder="Search ticker or name…"
