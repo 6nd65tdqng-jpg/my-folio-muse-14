@@ -15,6 +15,7 @@ import { Route as NewsRouteImport } from './routes/news'
 import { Route as HoldingsRouteImport } from './routes/holdings'
 import { Route as EquitiesRouteImport } from './routes/equities'
 import { Route as EarningsRouteImport } from './routes/earnings'
+import { Route as DeepDiveRouteImport } from './routes/deep-dive'
 import { Route as CryptoRouteImport } from './routes/crypto'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
@@ -50,6 +51,11 @@ const EarningsRoute = EarningsRouteImport.update({
   path: '/earnings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeepDiveRoute = DeepDiveRouteImport.update({
+  id: '/deep-dive',
+  path: '/deep-dive',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CryptoRoute = CryptoRouteImport.update({
   id: '/crypto',
   path: '/crypto',
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/crypto': typeof CryptoRoute
+  '/deep-dive': typeof DeepDiveRoute
   '/earnings': typeof EarningsRoute
   '/equities': typeof EquitiesRoute
   '/holdings': typeof HoldingsRoute
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/crypto': typeof CryptoRoute
+  '/deep-dive': typeof DeepDiveRoute
   '/earnings': typeof EarningsRoute
   '/equities': typeof EquitiesRoute
   '/holdings': typeof HoldingsRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/assistant': typeof AssistantRoute
   '/crypto': typeof CryptoRoute
+  '/deep-dive': typeof DeepDiveRoute
   '/earnings': typeof EarningsRoute
   '/equities': typeof EquitiesRoute
   '/holdings': typeof HoldingsRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/assistant'
     | '/crypto'
+    | '/deep-dive'
     | '/earnings'
     | '/equities'
     | '/holdings'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/assistant'
     | '/crypto'
+    | '/deep-dive'
     | '/earnings'
     | '/equities'
     | '/holdings'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/assistant'
     | '/crypto'
+    | '/deep-dive'
     | '/earnings'
     | '/equities'
     | '/holdings'
@@ -152,6 +164,7 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   AssistantRoute: typeof AssistantRoute
   CryptoRoute: typeof CryptoRoute
+  DeepDiveRoute: typeof DeepDiveRoute
   EarningsRoute: typeof EarningsRoute
   EquitiesRoute: typeof EquitiesRoute
   HoldingsRoute: typeof HoldingsRoute
@@ -204,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EarningsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/deep-dive': {
+      id: '/deep-dive'
+      path: '/deep-dive'
+      fullPath: '/deep-dive'
+      preLoaderRoute: typeof DeepDiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/crypto': {
       id: '/crypto'
       path: '/crypto'
@@ -240,6 +260,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   AssistantRoute: AssistantRoute,
   CryptoRoute: CryptoRoute,
+  DeepDiveRoute: DeepDiveRoute,
   EarningsRoute: EarningsRoute,
   EquitiesRoute: EquitiesRoute,
   HoldingsRoute: HoldingsRoute,
@@ -250,3 +271,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
