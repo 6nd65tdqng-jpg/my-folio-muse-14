@@ -11,6 +11,7 @@ import {
   Newspaper,
   Sparkles,
   CalendarClock,
+  Microscope,
 } from "lucide-react";
 import {
   Sidebar,
@@ -37,6 +38,7 @@ const items = [
   { title: "Analytics", url: "/analytics", icon: LineChart },
   { title: "Earnings", url: "/earnings", icon: CalendarClock },
   { title: "News", url: "/news", icon: Newspaper },
+  { title: "Deep Dive", url: "/deep-dive", icon: Microscope },
   { title: "Assistant", url: "/assistant", icon: Sparkles },
   { title: "Settings", url: "/settings", icon: SettingsIcon },
 ];
