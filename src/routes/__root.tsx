@@ -17,6 +17,7 @@ import { usePortfolio } from "@/lib/portfolio-store";
 import { useLivePrices } from "@/hooks/use-live-prices";
 import { PortfolioHeaderStats } from "@/components/portfolio-header-stats";
 import { MarketStatus } from "@/components/market-status";
+import { CompactPriceIndicator } from "@/components/price-update-indicator";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { AuthGate } from "@/components/auth-gate";
@@ -191,13 +192,15 @@ function AppShell() {
               <div className="min-w-0 flex-1">
                 <PortfolioHeaderStats />
               </div>
-              <div className="hidden shrink-0 sm:flex">
+              <div className="hidden shrink-0 items-center gap-2 sm:flex">
+                <CompactPriceIndicator />
                 <MarketStatus />
               </div>
             </div>
             {/* Mobile: dedicated row so market status is always visible. */}
-            <div className="flex h-7 items-center border-t border-border/60 px-3 sm:hidden">
+            <div className="flex h-8 items-center justify-between border-t border-border/60 px-3 sm:hidden">
               <MarketStatus />
+              <CompactPriceIndicator />
             </div>
           </header>
           <main className="min-w-0 flex-1 px-3 py-4 md:px-6 md:py-6">
