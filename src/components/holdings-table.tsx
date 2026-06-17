@@ -57,8 +57,8 @@ export function HoldingsTable({
   const deleteHolding = usePortfolio((s) => s.deleteHolding);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
-    key: "value",
-    dir: "desc",
+    key: "ticker",
+    dir: "asc",
   });
   const [editing, setEditing] = useState<Holding | null>(null);
   const [open, setOpen] = useState(false);
@@ -160,13 +160,16 @@ export function HoldingsTable({
                       {h.name}
                     </span>
                   </div>
-                  <div className="mt-0.5 flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="font-mono tabular-nums">
-                      {fmtNum(h.quantity, 4)} @{" "}
+                  <div className="mt-1 flex items-center gap-1.5 text-sm">
+                    <span className="font-mono font-semibold tabular-nums text-foreground">
                       {fmtMoney(h.currentPrice, h.currency)}
                     </span>
-                    <span>·</span>
-                    <span className="font-mono tabular-nums">
+                    <span className="text-muted-foreground">·</span>
+                    <span className="font-mono tabular-nums text-muted-foreground">
+                      {fmtNum(h.quantity, 4)} sh
+                    </span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="font-mono tabular-nums text-muted-foreground">
                       {alloc.toFixed(1)}%
                     </span>
                   </div>
