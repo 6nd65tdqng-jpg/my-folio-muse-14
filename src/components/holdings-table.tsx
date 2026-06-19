@@ -177,7 +177,7 @@ export function HoldingsTable({
                     </span>
                   </div>
                 </div>
-                <div className="grid grid-cols-4 gap-x-2 gap-y-1 border-t border-border/60 pt-2 text-xs">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-border/60 pt-2 text-xs">
                   <Stat label="Qty" value={fmtNum(h.quantity, 4)} />
                   <Stat label="Cost" value={fmtMoney(h.avgCostBasis, h.currency)} />
                   <Stat
