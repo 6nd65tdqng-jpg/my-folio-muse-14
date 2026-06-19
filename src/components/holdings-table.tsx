@@ -148,44 +148,51 @@ export function HoldingsTable({
                   setDetailHolding(h);
                   setDetailOpen(true);
                 }}
-                className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left active:bg-accent/40"
+                className="flex w-full flex-col gap-2.5 px-4 py-3 text-left active:bg-accent/40"
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-secondary-foreground">
-                  {h.ticker.slice(0, 2)}
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-secondary-foreground">
+                    {h.ticker.slice(0, 2)}
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col leading-tight">
+                    <span className="truncate text-base font-semibold">
+                      {h.ticker}
+                    </span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {h.name}
+                    </span>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end whitespace-nowrap leading-tight">
+                    <span className="font-mono text-lg font-bold tabular-nums">
+                      {fmtMoney(h.currentPrice, h.currency)}
+                    </span>
+                    <span
+                      className={cn(
+                        "font-mono text-sm font-semibold tabular-nums",
+                        dayUp ? "text-[var(--success)]" : "text-destructive",
+                      )}
+                    >
+                      {fmtPct(m.dayChangePct)}{" "}
+                      <span className="font-normal text-muted-foreground">today</span>
+                    </span>
+                  </div>
                 </div>
-                <div className="flex min-w-0 flex-col leading-tight">
-                  <span className="truncate text-base font-semibold">
-                    {h.ticker}
-                  </span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    {h.name}
-                  </span>
-                  <span className="mt-1 truncate font-mono text-xs tabular-nums text-muted-foreground">
-                    {fmtMoney(h.currentPrice, h.currency)} · {fmtNum(h.quantity, 4)} sh · {alloc.toFixed(1)}%
-                  </span>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-0.5 whitespace-nowrap leading-tight">
-                  <span className="font-mono text-base font-semibold tabular-nums">
-                    {fmtMoney(m.valueBase, settings.baseCurrency, {
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-border/60 pt-2 text-xs">
+                  <Stat label="Qty" value={fmtNum(h.quantity, 4)} />
+                  <Stat label="Cost" value={fmtMoney(h.avgCostBasis, h.currency)} />
+                  <Stat
+                    label="Value"
+                    value={fmtMoney(m.valueBase, settings.baseCurrency, {
                       compact: true,
                     })}
-                  </span>
-                  <span
-                    className={cn(
-                      "font-mono text-xs tabular-nums",
-                      dayUp ? "text-[var(--success)]" : "text-destructive",
-                    )}
-                  >
-                    {fmtPct(m.dayChangePct)} <span className="text-muted-foreground">today</span>
-                  </span>
-                  <span
-                    className={cn(
-                      "font-mono text-xs tabular-nums",
-                      pnlUp ? "text-[var(--success)]" : "text-destructive",
-                    )}
-                  >
-                    {fmtPct(m.pnlPct)} <span className="text-muted-foreground">P&L</span>
-                  </span>
+                  />
+                  <Stat
+                    label="P&L"
+                    value={`${fmtMoney(m.pnlBase, settings.baseCurrency, {
+                      compact: true,
+                    })} (${fmtPct(m.pnlPct)})`}
+                    className={pnlUp ? "text-[var(--success)]" : "text-destructive"}
+                  />
                 </div>
               </button>
             );
@@ -427,5 +434,24 @@ function Th({
         {onClick && <ArrowUpDown className="h-3 w-3 opacity-60" />}
       </span>
     </TableHead>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
+  return (
+    <div className="flex flex-col leading-tight">
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      <span className={cn("font-mono tabular-nums", className)}>{value}</span>
+    </div>
   );
 }
