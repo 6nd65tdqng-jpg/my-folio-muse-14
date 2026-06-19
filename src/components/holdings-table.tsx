@@ -436,3 +436,22 @@ function Th({
     </TableHead>
   );
 }
+
+function Stat({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
+  return (
+    <div className="flex flex-col leading-tight">
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      <span className={cn("font-mono tabular-nums", className)}>{value}</span>
+    </div>
+  );
+}
