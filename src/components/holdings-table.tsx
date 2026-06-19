@@ -148,33 +148,23 @@ export function HoldingsTable({
                   setDetailHolding(h);
                   setDetailOpen(true);
                 }}
-                className="flex w-full items-center gap-3 px-3 py-3 text-left active:bg-accent/40"
+                className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left active:bg-accent/40"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-secondary-foreground">
                   {h.ticker.slice(0, 2)}
                 </div>
-                <div className="flex min-w-0 flex-1 flex-col leading-tight">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base font-semibold">{h.ticker}</span>
-                    <span className="truncate text-sm text-muted-foreground">
-                      {h.name}
-                    </span>
-                  </div>
-                  <div className="mt-1 flex items-center gap-1.5 text-sm">
-                    <span className="font-mono font-semibold tabular-nums text-foreground">
-                      {fmtMoney(h.currentPrice, h.currency)}
-                    </span>
-                    <span className="text-muted-foreground">·</span>
-                    <span className="font-mono tabular-nums text-muted-foreground">
-                      {fmtNum(h.quantity, 4)} sh
-                    </span>
-                    <span className="text-muted-foreground">·</span>
-                    <span className="font-mono tabular-nums text-muted-foreground">
-                      {alloc.toFixed(1)}%
-                    </span>
-                  </div>
+                <div className="flex min-w-0 flex-col leading-tight">
+                  <span className="truncate text-base font-semibold">
+                    {h.ticker}
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {h.name}
+                  </span>
+                  <span className="mt-1 truncate font-mono text-xs tabular-nums text-muted-foreground">
+                    {fmtMoney(h.currentPrice, h.currency)} · {fmtNum(h.quantity, 4)} sh · {alloc.toFixed(1)}%
+                  </span>
                 </div>
-                <div className="flex shrink-0 flex-col items-end leading-tight">
+                <div className="flex shrink-0 flex-col items-end gap-0.5 whitespace-nowrap leading-tight">
                   <span className="font-mono text-base font-semibold tabular-nums">
                     {fmtMoney(m.valueBase, settings.baseCurrency, {
                       compact: true,
@@ -182,23 +172,19 @@ export function HoldingsTable({
                   </span>
                   <span
                     className={cn(
-                      "font-mono text-sm tabular-nums",
-                      dayUp
-                        ? "text-[var(--success)]"
-                        : "text-destructive",
+                      "font-mono text-xs tabular-nums",
+                      dayUp ? "text-[var(--success)]" : "text-destructive",
                     )}
                   >
-                    {fmtPct(m.dayChangePct)} today
+                    {fmtPct(m.dayChangePct)} <span className="text-muted-foreground">today</span>
                   </span>
                   <span
                     className={cn(
-                      "font-mono text-sm tabular-nums",
-                      pnlUp
-                        ? "text-[var(--success)]"
-                        : "text-destructive",
+                      "font-mono text-xs tabular-nums",
+                      pnlUp ? "text-[var(--success)]" : "text-destructive",
                     )}
                   >
-                    {fmtPct(m.pnlPct)} P&L
+                    {fmtPct(m.pnlPct)} <span className="text-muted-foreground">P&L</span>
                   </span>
                 </div>
               </button>
