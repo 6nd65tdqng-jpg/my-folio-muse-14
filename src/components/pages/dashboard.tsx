@@ -78,6 +78,18 @@ export function Dashboard() {
     }))
     .sort((a, b) => b.value - a.value);
 
+  // Group the long tail into "Other" so the chart + legend stay readable on
+  // a phone instead of rendering 40+ overlapping slices and labels.
+  const TOP_ALLOC = 8;
+  const allocGrouped = (() => {
+    if (allocByHolding.length <= TOP_ALLOC + 1) return allocByHolding;
+    const top = allocByHolding.slice(0, TOP_ALLOC);
+    const otherValue = allocByHolding
+      .slice(TOP_ALLOC)
+      .reduce((s, x) => s + x.value, 0);
+    return [...top, { name: "Other", value: otherValue }];
+  })();
+
   const allocByClass = (() => {
     const map = new Map<string, number>();
     for (const r of activeRows) {
@@ -183,47 +195,67 @@ export function Dashboard() {
               Allocation by Holding
             </CardTitle>
           </CardHeader>
-          <CardContent className="h-72 sm:h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={allocByHolding}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius="55%"
-                  outerRadius="75%"
-                  paddingAngle={2}
-                  stroke="var(--card)"
-                  label={({ name, percent }) =>
-                    percent && percent > 0.04
-                      ? `${name} ${(percent * 100).toFixed(0)}%`
-                      : ""
-                  }
-                  labelLine={false}
-                >
-                  {allocByHolding.map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill={CHART_COLORS[i % CHART_COLORS.length]}
+          <CardContent>
+            <div className="flex flex-col items-center gap-4 sm:flex-row">
+              {/* Donut: no arc labels (they overlap on a phone) */}
+              <div className="h-52 w-full max-w-[240px] sm:h-64 sm:max-w-none sm:flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={allocGrouped}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius="58%"
+                      outerRadius="82%"
+                      paddingAngle={2}
+                      stroke="var(--card)"
+                      labelLine={false}
+                    >
+                      {allocGrouped.map((_, i) => (
+                        <Cell
+                          key={i}
+                          fill={CHART_COLORS[i % CHART_COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      content={
+                        <PieTooltip
+                          total={m.totalValue}
+                          currency={settings.baseCurrency}
+                        />
+                      }
                     />
-                  ))}
-                </Pie>
-                <Tooltip
-                  content={
-                    <PieTooltip
-                      total={m.totalValue}
-                      currency={settings.baseCurrency}
-                    />
-                  }
-                />
-                <Legend
-                  verticalAlign="bottom"
-                  height={36}
-                  iconType="circle"
-                  wrapperStyle={{ fontSize: 11 }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              {/* Ranked legend: clear name + % + value, readable on mobile */}
+              <ul className="grid w-full grid-cols-1 gap-x-6 gap-y-1.5 sm:flex-1 sm:grid-cols-2">
+                {allocGrouped.map((a, i) => {
+                  const pct =
+                    m.totalValue > 0 ? (a.value / m.totalValue) * 100 : 0;
+                  return (
+                    <li
+                      key={a.name}
+                      className="flex items-center justify-between gap-2 text-sm"
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{
+                            background: CHART_COLORS[i % CHART_COLORS.length],
+                          }}
+                        />
+                        <span className="truncate font-medium">{a.name}</span>
+                      </span>
+                      <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
+                        {pct.toFixed(1)}%
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           </CardContent>
         </Card>
       </div>
