@@ -78,6 +78,18 @@ export function Dashboard() {
     }))
     .sort((a, b) => b.value - a.value);
 
+  // Group the long tail into "Other" so the chart + legend stay readable on
+  // a phone instead of rendering 40+ overlapping slices and labels.
+  const TOP_ALLOC = 8;
+  const allocGrouped = (() => {
+    if (allocByHolding.length <= TOP_ALLOC + 1) return allocByHolding;
+    const top = allocByHolding.slice(0, TOP_ALLOC);
+    const otherValue = allocByHolding
+      .slice(TOP_ALLOC)
+      .reduce((s, x) => s + x.value, 0);
+    return [...top, { name: "Other", value: otherValue }];
+  })();
+
   const allocByClass = (() => {
     const map = new Map<string, number>();
     for (const r of activeRows) {
