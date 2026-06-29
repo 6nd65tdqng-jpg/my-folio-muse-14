@@ -363,18 +363,43 @@ async function fetchYahooQuoteMeta(symbol: string): Promise<IndexQuote | null> {
   const json = (await r.json()) as {
     chart?: {
       result?: Array<{
+        timestamp?: number[];
         meta?: {
           regularMarketPrice?: number;
           chartPreviousClose?: number;
           previousClose?: number;
         };
+        indicators?: {
+          quote?: Array<{ close?: Array<number | null> }>;
+        };
       }>;
     };
   };
-  const meta = json.chart?.result?.[0]?.meta;
+  const result = json.chart?.result?.[0];
+  const meta = result?.meta;
   if (!meta) return null;
-  const price = Number(meta.regularMarketPrice);
-  const prev = Number(meta.chartPreviousClose ?? meta.previousClose);
+
+  // Daily closes for the window. The LAST valid close is the current/most
+  // recent session; the prior session's close is the one before it. We must
+  // derive prevClose this way because Yahoo's `chartPreviousClose` is the
+  // close *before* the whole 5-day window (3-4 sessions ago), which would
+  // make the daily change % wrong.
+  const closes = (result?.indicators?.quote?.[0]?.close ?? []).filter(
+    (c): c is number => typeof c === "number" && isFinite(c) && c > 0,
+  );
+
+  const price = Number(meta.regularMarketPrice) || closes[closes.length - 1];
+  // Prefer the second-to-last daily close as "previous close". Fall back to
+  // the meta fields only if the closes array is unavailable.
+  let prev: number;
+  if (closes.length >= 2) {
+    // If the last close equals the live price, the last bar IS the current
+    // session → previous session is closes[len-2]. Otherwise (rare) the last
+    // completed bar is the previous session.
+    prev = closes[closes.length - 2];
+  } else {
+    prev = Number(meta.previousClose ?? meta.chartPreviousClose);
+  }
   if (!isFinite(price) || price <= 0 || !isFinite(prev) || prev <= 0) return null;
   const change = price - prev;
   const changePct = (change / prev) * 100;
