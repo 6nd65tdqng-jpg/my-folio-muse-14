@@ -356,25 +356,61 @@ async function fetchYahooQuoteMeta(symbol: string): Promise<IndexQuote | null> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
     symbol,
   )}?interval=1d&range=5d`;
-  const r = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; PortfolioApp/1.0)" },
-  });
-  if (!r.ok) return null;
+  // Yahoo intermittently rate-limits/blocks worker IPs. Retry a couple of
+  // times with a tiny backoff so a single hiccup doesn't drop an index.
+  let r: Response | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      r = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; PortfolioApp/1.0)" },
+      });
+      if (r.ok) break;
+    } catch {
+      r = null;
+    }
+    await new Promise((res) => setTimeout(res, 250 * (attempt + 1)));
+  }
+  if (!r || !r.ok) return null;
   const json = (await r.json()) as {
     chart?: {
       result?: Array<{
+        timestamp?: number[];
         meta?: {
           regularMarketPrice?: number;
           chartPreviousClose?: number;
           previousClose?: number;
         };
+        indicators?: {
+          quote?: Array<{ close?: Array<number | null> }>;
+        };
       }>;
     };
   };
-  const meta = json.chart?.result?.[0]?.meta;
+  const result = json.chart?.result?.[0];
+  const meta = result?.meta;
   if (!meta) return null;
-  const price = Number(meta.regularMarketPrice);
-  const prev = Number(meta.chartPreviousClose ?? meta.previousClose);
+
+  // Daily closes for the window. The LAST valid close is the current/most
+  // recent session; the prior session's close is the one before it. We must
+  // derive prevClose this way because Yahoo's `chartPreviousClose` is the
+  // close *before* the whole 5-day window (3-4 sessions ago), which would
+  // make the daily change % wrong.
+  const closes = (result?.indicators?.quote?.[0]?.close ?? []).filter(
+    (c): c is number => typeof c === "number" && isFinite(c) && c > 0,
+  );
+
+  const price = Number(meta.regularMarketPrice) || closes[closes.length - 1];
+  // Prefer the second-to-last daily close as "previous close". Fall back to
+  // the meta fields only if the closes array is unavailable.
+  let prev: number;
+  if (closes.length >= 2) {
+    // If the last close equals the live price, the last bar IS the current
+    // session → previous session is closes[len-2]. Otherwise (rare) the last
+    // completed bar is the previous session.
+    prev = closes[closes.length - 2];
+  } else {
+    prev = Number(meta.previousClose ?? meta.chartPreviousClose);
+  }
   if (!isFinite(price) || price <= 0 || !isFinite(prev) || prev <= 0) return null;
   const change = price - prev;
   const changePct = (change / prev) * 100;
@@ -397,10 +433,18 @@ export const fetchMarketIndices = createServerFn({ method: "GET" }).handler(
     const settled = await Promise.allSettled(
       INDEX_SYMBOLS.map((s) => fetchYahooQuoteMeta(s.symbol)),
     );
-    const indices: IndexQuote[] = [];
+    // Start from the last known-good values so that an index which failed to
+    // refresh this round keeps its previous price instead of disappearing.
+    const bySymbol = new Map<string, IndexQuote>(
+      (indicesCache?.data ?? []).map((q) => [q.symbol, q]),
+    );
     for (const r of settled) {
-      if (r.status === "fulfilled" && r.value) indices.push(r.value);
+      if (r.status === "fulfilled" && r.value) bySymbol.set(r.value.symbol, r.value);
     }
+    // Preserve the configured order.
+    const indices = INDEX_SYMBOLS.map((s) => bySymbol.get(s.symbol)).filter(
+      (q): q is IndexQuote => Boolean(q),
+    );
     if (indices.length > 0) indicesCache = { at: Date.now(), data: indices };
     return { indices };
   },
