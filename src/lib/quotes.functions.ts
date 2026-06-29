@@ -433,10 +433,18 @@ export const fetchMarketIndices = createServerFn({ method: "GET" }).handler(
     const settled = await Promise.allSettled(
       INDEX_SYMBOLS.map((s) => fetchYahooQuoteMeta(s.symbol)),
     );
-    const indices: IndexQuote[] = [];
+    // Start from the last known-good values so that an index which failed to
+    // refresh this round keeps its previous price instead of disappearing.
+    const bySymbol = new Map<string, IndexQuote>(
+      (indicesCache?.data ?? []).map((q) => [q.symbol, q]),
+    );
     for (const r of settled) {
-      if (r.status === "fulfilled" && r.value) indices.push(r.value);
+      if (r.status === "fulfilled" && r.value) bySymbol.set(r.value.symbol, r.value);
     }
+    // Preserve the configured order.
+    const indices = INDEX_SYMBOLS.map((s) => bySymbol.get(s.symbol)).filter(
+      (q): q is IndexQuote => Boolean(q),
+    );
     if (indices.length > 0) indicesCache = { at: Date.now(), data: indices };
     return { indices };
   },
