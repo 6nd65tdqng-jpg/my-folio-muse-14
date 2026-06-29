@@ -356,10 +356,21 @@ async function fetchYahooQuoteMeta(symbol: string): Promise<IndexQuote | null> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
     symbol,
   )}?interval=1d&range=5d`;
-  const r = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; PortfolioApp/1.0)" },
-  });
-  if (!r.ok) return null;
+  // Yahoo intermittently rate-limits/blocks worker IPs. Retry a couple of
+  // times with a tiny backoff so a single hiccup doesn't drop an index.
+  let r: Response | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      r = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; PortfolioApp/1.0)" },
+      });
+      if (r.ok) break;
+    } catch {
+      r = null;
+    }
+    await new Promise((res) => setTimeout(res, 250 * (attempt + 1)));
+  }
+  if (!r || !r.ok) return null;
   const json = (await r.json()) as {
     chart?: {
       result?: Array<{
