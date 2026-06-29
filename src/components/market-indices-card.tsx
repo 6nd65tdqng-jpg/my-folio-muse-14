@@ -96,14 +96,10 @@ export function MarketIndicesCard() {
             {INDEX_GROUPS.map((g) => {
               const spot = bySym.get(g.spot);
               const fut = g.fut ? bySym.get(g.fut) : undefined;
-              // Primary: cash when open, otherwise futures (if any), otherwise cash.
-              const primary = marketOpen ? spot : fut ?? spot;
-              const secondary =
-                marketOpen && fut
-                  ? fut
-                  : !marketOpen && spot && primary?.symbol !== spot.symbol
-                    ? spot
-                    : undefined;
+              // One price per index, strictly by session:
+              //  • market open  → live cash index (fall back to futures only if cash missing)
+              //  • market closed → futures (fall back to last cash close if no futures)
+              const primary = marketOpen ? spot ?? fut : fut ?? spot;
               if (!primary) {
                 return (
                   <div
@@ -115,6 +111,7 @@ export function MarketIndicesCard() {
                   </div>
                 );
               }
+              const isFut = primary.symbol === g.fut;
               const up = primary.changePct >= 0;
               return (
                 <div
@@ -126,7 +123,7 @@ export function MarketIndicesCard() {
                       {g.label}
                     </span>
                     <span className="text-[9px] text-muted-foreground/70">
-                      {primary.symbol === g.fut ? "FUT" : ""}
+                      {g.fut ? (isFut ? "FUT" : "CASH") : ""}
                     </span>
                   </div>
                   <div className="font-mono text-sm font-semibold tabular-nums">
@@ -146,22 +143,6 @@ export function MarketIndicesCard() {
                     {up ? "+" : ""}
                     {fmtNum(primary.changePct, 2)}%
                   </div>
-                  {secondary && (
-                    <div className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                      {secondary.symbol === g.fut ? "Fut " : "Cash "}
-                      {fmtNum(secondary.price, g.decimals ?? 2)}{" "}
-                      <span
-                        className={cn(
-                          secondary.changePct >= 0
-                            ? "text-[var(--success)]"
-                            : "text-destructive",
-                        )}
-                      >
-                        {secondary.changePct >= 0 ? "+" : ""}
-                        {fmtNum(secondary.changePct, 2)}%
-                      </span>
-                    </div>
-                  )}
                 </div>
               );
             })}
