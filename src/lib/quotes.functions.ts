@@ -16,6 +16,12 @@ export interface QuoteResult {
   prevClose: number;
 }
 
+export interface CryptoQuoteResult {
+  id: string;
+  price: number;
+  prevClose: number;
+}
+
 export interface HistoricalPricePoint {
   date: string;
   price: number;
