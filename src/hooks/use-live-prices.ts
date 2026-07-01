@@ -1,9 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { usePortfolio } from "@/lib/portfolio-store";
-import { fetchStockQuotes } from "@/lib/quotes.functions";
-import { fetchWithThrottle, rateLimiters } from "@/lib/rate-limiter";
-
-const FOREGROUND_REFRESH_THROTTLE_MS = 60_000;
+import { fetchStockQuotes, fetchCryptoQuotes } from "@/lib/quotes.functions";
 
 // US equities regular session: Mon–Fri 09:30–16:00 America/New_York.
 // Uses Intl to read ET wall-clock so DST is handled automatically.
@@ -24,6 +23,8 @@ function isUsMarketOpen(now: Date = new Date()): boolean {
   return mins >= 9 * 60 + 30 && mins < 16 * 60;
 }
 
+type PriceMap = Record<string, { price: number; prevClose?: number }>;
+
 export function useLivePrices(enabled = true) {
   const holdings = usePortfolio((s) => s.holdings);
   const watchlist = usePortfolio((s) => s.watchlist);
@@ -31,151 +32,112 @@ export function useLivePrices(enabled = true) {
   const setPricesFetching = usePortfolio((s) => s.setPricesFetching);
   const setPriceError = usePortfolio((s) => s.setPriceError);
   const interval = usePortfolio((s) => s.settings.refreshIntervalMin);
-  const lastRun = useRef(0);
-  const lastSymbolsKey = useRef("");
 
-  useEffect(() => {
-    if (!enabled) {
-      setPricesFetching(false);
-      return;
-    }
+  const getStockQuotes = useServerFn(fetchStockQuotes);
+  const getCryptoQuotes = useServerFn(fetchCryptoQuotes);
 
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
+  // Stable, sorted symbol/id lists. The query key is derived from these so
+  // adding a holding or watchlist entry refetches its price immediately.
+  const { stockSymbols, cryptoIds, symbolsKey } = useMemo(() => {
     const all = [...holdings, ...watchlist];
-    const hasEquities = all.some((h) => h.assetType === "equity");
-    const baseMs = Math.max(1, interval) * 60_000;
-    // Off-hours: stocks don't move — back off 6x, floor at 30 minutes.
-    // Pure-crypto portfolios always use the base interval (24/7 market).
-    const offHoursMs = Math.max(baseMs * 6, 30 * 60_000);
+    const stocks = Array.from(
+      new Set(
+        all
+          .filter((h) => h.assetType === "equity")
+          .map((h) => h.ticker.toUpperCase()),
+      ),
+    ).sort();
+    const cryptos = Array.from(
+      new Set(
+        all
+          .filter((h) => h.assetType === "crypto" && h.coingeckoId)
+          .map((h) => h.coingeckoId!.toLowerCase()),
+      ),
+    ).sort();
+    const key = [
+      ...stocks.map((s) => `e:${s}`),
+      ...cryptos.map((c) => `c:${c}`),
+    ].join("|");
+    return { stockSymbols: stocks, cryptoIds: cryptos, symbolsKey: key };
+  }, [holdings, watchlist]);
 
-    function nextDelayMs(): number {
+  const hasEquities = stockSymbols.length > 0;
+  const baseMs = Math.max(1, interval) * 60_000;
+  // Off-hours: stocks don't move — back off 6x, floor at 30 minutes.
+  // Pure-crypto portfolios always use the base interval (24/7 market).
+  const offHoursMs = Math.max(baseMs * 6, 30 * 60_000);
+
+  const query = useQuery<PriceMap>({
+    queryKey: ["live-prices", symbolsKey],
+    enabled: enabled && symbolsKey.length > 0,
+    staleTime: 30_000,
+    gcTime: 30 * 60_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchIntervalInBackground: false,
+    // Dynamic cadence: fast during market hours, slow when closed.
+    refetchInterval: () => {
       if (!hasEquities) return baseMs;
       return isUsMarketOpen() ? baseMs : offHoursMs;
-    }
-
-    async function run(forceRefresh = false) {
-      lastRun.current = Date.now();
-      setPricesFetching(true);
-      setPriceError(null);
-      const prices: Record<string, { price: number; prevClose?: number }> = {};
-      try {
-        // Crypto via CoinGecko (no key needed)
-        const ids = Array.from(
-          new Set(
-            all
-              .filter((h) => h.assetType === "crypto" && h.coingeckoId)
-              .map((h) => h.coingeckoId!),
-          ),
-        );
-        if (ids.length > 0) {
-          try {
-            const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(
-              ",",
-            )}&vs_currencies=usd&include_24hr_change=true`;
-            const res = await fetchWithThrottle(url, rateLimiters.coingecko);
-            if (res.ok) {
-              const data = (await res.json()) as Record<
-                string,
-                { usd: number; usd_24h_change?: number }
-              >;
-              for (const [id, v] of Object.entries(data)) {
-                const change = v.usd_24h_change ?? 0;
-                const prev = v.usd / (1 + change / 100);
-                prices[id] = { price: v.usd, prevClose: prev };
-              }
-            }
-          } catch (error) {
-            console.warn("CoinGecko fetch failed:", error);
-          }
+    },
+    queryFn: async () => {
+      const prices: PriceMap = {};
+      const [stockRes, cryptoRes] = await Promise.allSettled([
+        stockSymbols.length > 0
+          ? getStockQuotes({ data: { symbols: stockSymbols } })
+          : Promise.resolve({ quotes: [] }),
+        cryptoIds.length > 0
+          ? getCryptoQuotes({ data: { ids: cryptoIds } })
+          : Promise.resolve({ quotes: [] }),
+      ]);
+      if (stockRes.status === "fulfilled") {
+        for (const q of stockRes.value.quotes) {
+          prices[q.symbol] = { price: q.price, prevClose: q.prevClose };
         }
-
-        // Stocks / ETFs via Finnhub server function
-        const stockSymbols = Array.from(
-          new Set(
-            all
-              .filter((h) => h.assetType === "equity")
-              .map((h) => h.ticker.toUpperCase()),
-          ),
-        );
-        if (stockSymbols.length > 0) {
-          try {
-            const { quotes } = await fetchStockQuotes({
-              data: { symbols: stockSymbols, forceRefresh },
-            });
-            for (const q of quotes) {
-              prices[q.symbol] = { price: q.price, prevClose: q.prevClose };
-            }
-          } catch (e) {
-            console.warn("stock quote fetch failed", e);
-          }
-        }
-
-        if (cancelled) return;
-        if (Object.keys(prices).length > 0) setPrices(prices);
-      } catch (error) {
-        console.error("Price fetch error:", error);
-        setPriceError(
-          error instanceof Error ? error.message : "Failed to fetch prices",
-        );
-      } finally {
-        if (!cancelled) setPricesFetching(false);
+      } else {
+        console.warn("stock quote fetch failed", stockRes.reason);
       }
-    }
+      if (cryptoRes.status === "fulfilled") {
+        for (const q of cryptoRes.value.quotes) {
+          prices[q.id] = { price: q.price, prevClose: q.prevClose };
+        }
+      } else {
+        console.warn("crypto quote fetch failed", cryptoRes.reason);
+      }
+      return prices;
+    },
+  });
 
-    function schedule() {
-      if (cancelled) return;
-      timer = setTimeout(async () => {
-        await run(true);
-        schedule();
-      }, nextDelayMs());
-    }
+  // Push fetched prices into the Zustand store (source of truth for holdings).
+  const data = query.data;
+  useEffect(() => {
+    if (data && Object.keys(data).length > 0) setPrices(data);
+  }, [data, setPrices]);
 
-    // Build a stable key of all symbols we need quotes for. Run immediately
-    // whenever it changes — e.g. when the user adds a new watchlist entry,
-    // we must fetch its price right away or charts stay flat at $0.
-    const symbolsKey = Array.from(
-      new Set(
-        all.map((h) =>
-          h.assetType === "crypto"
-            ? `c:${h.coingeckoId ?? h.ticker.toLowerCase()}`
-            : `e:${h.ticker.toUpperCase()}`,
-        ),
-      ),
-    )
-      .sort()
-      .join("|");
-    if (symbolsKey && symbolsKey !== lastSymbolsKey.current) {
-      lastSymbolsKey.current = symbolsKey;
-      run(true);
-    }
-    schedule();
+  // Mirror fetch state into the store so the header indicator can react.
+  const isFetching = query.isFetching;
+  useEffect(() => {
+    setPricesFetching(isFetching);
+  }, [isFetching, setPricesFetching]);
 
-    // Refresh when the app returns to the foreground (tab visible, window
-    // focused, or pageshow from bfcache) — but throttle to avoid spamming
-    // when the user toggles quickly.
-    function maybeRun() {
-      if (document.visibilityState !== "visible") return;
-      if (Date.now() - lastRun.current < FOREGROUND_REFRESH_THROTTLE_MS) return;
-      run(true);
-    }
-    document.addEventListener("visibilitychange", maybeRun);
-    window.addEventListener("focus", maybeRun);
-    window.addEventListener("pageshow", maybeRun);
-    // Cloud-sync hydration finished — refetch unconditionally (bypass throttle).
+  const { isError, error } = query;
+  useEffect(() => {
+    setPriceError(
+      isError
+        ? error instanceof Error
+          ? error.message
+          : "Failed to fetch prices"
+        : null,
+    );
+  }, [isError, error, setPriceError]);
+
+  // Cloud-sync hydration finished — refetch to reconcile with the new holdings.
+  const refetch = query.refetch;
+  useEffect(() => {
     const onHydrated = () => {
-      run(true);
+      void refetch();
     };
     window.addEventListener("cloud-sync:hydrated", onHydrated);
-
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-      document.removeEventListener("visibilitychange", maybeRun);
-      window.removeEventListener("focus", maybeRun);
-      window.removeEventListener("pageshow", maybeRun);
-      window.removeEventListener("cloud-sync:hydrated", onHydrated);
-    };
-  }, [enabled, holdings, watchlist, setPrices, setPricesFetching, setPriceError, interval]);
+    return () => window.removeEventListener("cloud-sync:hydrated", onHydrated);
+  }, [refetch]);
 }

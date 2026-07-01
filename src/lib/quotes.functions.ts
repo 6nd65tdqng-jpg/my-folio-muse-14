@@ -16,6 +16,12 @@ export interface QuoteResult {
   prevClose: number;
 }
 
+export interface CryptoQuoteResult {
+  id: string;
+  price: number;
+  prevClose: number;
+}
+
 export interface HistoricalPricePoint {
   date: string;
   price: number;
@@ -279,6 +285,75 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
     }
 
     return { quotes: [...results, ...fresh] };
+  });
+
+const CRYPTO_CACHE_TTL_MS = 60 * 1000;
+const cryptoCache = new Map<string, { at: number; price: number; prevClose: number }>();
+
+// Fetch crypto spot prices server-side. Doing this on the worker (instead of
+// straight from the browser) avoids CoinGecko's aggressive per-IP rate limits
+// and CORS flakiness, and lets us cache results across all clients.
+export const fetchCryptoQuotes = createServerFn({ method: "POST" })
+  .inputValidator((input: { ids: string[] }) => {
+    if (!input || !Array.isArray(input.ids)) {
+      throw new Error("ids array required");
+    }
+    const clean = Array.from(
+      new Set(
+        input.ids
+          .filter((s) => typeof s === "string" && s.length > 0 && s.length <= 80)
+          .map((s) => s.toLowerCase()),
+      ),
+    ).slice(0, 250);
+    return { ids: clean };
+  })
+  .handler(async ({ data }): Promise<{ quotes: CryptoQuoteResult[] }> => {
+    if (data.ids.length === 0) return { quotes: [] };
+    const now = Date.now();
+    const results: CryptoQuoteResult[] = [];
+    const stale: string[] = [];
+
+    for (const id of data.ids) {
+      const hit = cryptoCache.get(id);
+      if (hit && now - hit.at < CRYPTO_CACHE_TTL_MS) {
+        results.push({ id, price: hit.price, prevClose: hit.prevClose });
+      } else {
+        stale.push(id);
+      }
+    }
+
+    if (stale.length > 0) {
+      try {
+        const url = `https://api.coingecko.com/api/v3/simple/price?ids=${stale.join(
+          ",",
+        )}&vs_currencies=usd&include_24hr_change=true`;
+        const r = await fetch(url, { headers: { Accept: "application/json" } });
+        if (r.ok) {
+          const json = (await r.json()) as Record<
+            string,
+            { usd: number; usd_24h_change?: number }
+          >;
+          for (const [id, v] of Object.entries(json)) {
+            if (typeof v?.usd !== "number") continue;
+            const change = v.usd_24h_change ?? 0;
+            const prev = v.usd / (1 + change / 100);
+            cryptoCache.set(id, { at: now, price: v.usd, prevClose: prev });
+            results.push({ id, price: v.usd, prevClose: prev });
+          }
+        }
+      } catch (e) {
+        console.warn("coingecko fetch failed", e);
+      }
+      // Fall back to the last cached value for anything that failed to refresh.
+      const have = new Set(results.map((q) => q.id));
+      for (const id of stale) {
+        if (have.has(id)) continue;
+        const hit = cryptoCache.get(id);
+        if (hit) results.push({ id, price: hit.price, prevClose: hit.prevClose });
+      }
+    }
+
+    return { quotes: results };
   });
 
 export const fetchPriceHistory = createServerFn({ method: "POST" })
