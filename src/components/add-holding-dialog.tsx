@@ -70,7 +70,9 @@ export function AddHoldingDialog({
   function submit() {
     const qty = parseFloat(form.quantity);
     const avg = parseFloat(form.avgCostBasis);
-    const price = parseFloat(form.currentPrice);
+    // Current price is optional — live prices auto-refresh and overwrite it.
+    // If left blank, seed it from the average cost so P/L starts at zero.
+    const price = form.currentPrice.trim() === "" ? avg : parseFloat(form.currentPrice);
     if (!form.ticker.trim() || !form.name.trim()) {
       toast.error("Ticker and name are required");
       return;
@@ -233,11 +235,12 @@ export function AddHoldingDialog({
               }
             />
           </Field>
-          <Field label="Current Price">
+          <Field label="Current Price (optional)">
             <Input
               type="number"
               inputMode="decimal"
               step="any"
+              placeholder="Auto — updates live"
               value={form.currentPrice}
               onChange={(e) =>
                 setForm({ ...form, currentPrice: e.target.value })
