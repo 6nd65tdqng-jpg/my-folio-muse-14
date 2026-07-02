@@ -473,38 +473,45 @@ function DayMoverList({
       </p>
     );
   return (
-    <ul className="space-y-2">
-      {rows.map((r) => (
-        <li
-          key={r.h.id}
-          className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-accent/50"
-        >
-          <div className="flex flex-col leading-tight">
-            <TickerLink ticker={r.h.ticker} className="text-sm font-medium">
-              {r.h.ticker}
-            </TickerLink>
-            <span className="text-xs text-muted-foreground">{r.h.name}</span>
-          </div>
-          <div className="text-right">
-            <div
-              className={cn(
-                "font-mono text-sm font-semibold tabular-nums",
-                direction === "up" ? "text-[var(--success)]" : "text-destructive",
-              )}
+    <div className="space-y-1">
+      {/* Column headers so each number is unambiguous */}
+      <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-3 px-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+        <span>Ticker</span>
+        <span className="text-right">Price</span>
+        <span className="text-right">Change</span>
+        <span className="text-right">P&amp;L</span>
+      </div>
+      <ul className="space-y-1">
+        {rows.map((r) => {
+          const tone =
+            direction === "up" ? "text-[var(--success)]" : "text-destructive";
+          return (
+            <li
+              key={r.h.id}
+              className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-3 rounded-md px-2 py-1.5 hover:bg-accent/50"
             >
-              {fmtPct(r.m.dayChangePct)}
-            </div>
-            <div
-              className={cn(
-                "font-mono text-xs tabular-nums text-muted-foreground",
-              )}
-            >
-              {fmtMoney(r.m.dayChangeBase, currency, { compact: true })}
-            </div>
-          </div>
-        </li>
-      ))}
-    </ul>
+              <div className="flex min-w-0 flex-col leading-tight">
+                <TickerLink ticker={r.h.ticker} className="text-sm font-medium">
+                  {r.h.ticker}
+                </TickerLink>
+                <span className="truncate text-xs text-muted-foreground">
+                  {r.h.name}
+                </span>
+              </div>
+              <div className="text-right font-mono text-sm tabular-nums">
+                {fmtMoney(r.h.currentPrice, r.h.currency)}
+              </div>
+              <div className={cn("text-right font-mono text-sm font-semibold tabular-nums", tone)}>
+                {fmtPct(r.m.dayChangePct)}
+              </div>
+              <div className={cn("text-right font-mono text-sm tabular-nums", tone)}>
+                {fmtMoney(r.m.dayChangeBase, currency, { compact: true })}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
