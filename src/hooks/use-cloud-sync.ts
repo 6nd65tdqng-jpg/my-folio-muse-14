@@ -11,6 +11,12 @@ function syncSignature(data: ReturnType<typeof usePortfolio.getState>) {
     transactions: data.transactions,
     history: data.history,
     settings: data.settings,
+    // This intentionally causes a lightweight Cloud save after a successful
+    // price refresh. The holdings themselves already contain the latest
+    // currentPrice/prevClose fields via getCloudData(), and this timestamp is
+    // what lets mobile/PWA users see the age of the numbers immediately after
+    // login instead of loading an undated stale snapshot.
+    lastPriceUpdate: data.lastPriceUpdate,
   });
 }
 

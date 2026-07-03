@@ -48,4 +48,5 @@ export interface PortfolioCloudData {
   transactions: Transaction[];
   history?: PortfolioSnapshot[];
   settings?: Partial<Settings>;
+  lastPriceUpdate?: string | null;
 }

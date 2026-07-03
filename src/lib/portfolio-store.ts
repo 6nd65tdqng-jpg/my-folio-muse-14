@@ -320,6 +320,8 @@ export const usePortfolio = create<PortfolioState>()(
           transactions: data.transactions,
           history: data.history ?? [],
           settings: { ...defaultSettings, ...s.settings, ...(data.settings ?? {}) },
+          lastPriceUpdate: data.lastPriceUpdate ?? null,
+          priceError: null,
           seedVersion: data.seedVersion ?? PORTFOLIO_SEED_VERSION,
         })),
       getCloudData: () => {
@@ -331,6 +333,7 @@ export const usePortfolio = create<PortfolioState>()(
           transactions: s.transactions,
           history: s.history,
           settings: s.settings,
+          lastPriceUpdate: s.lastPriceUpdate,
         };
       },
       setSettings: (s) =>
