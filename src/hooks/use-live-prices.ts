@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { usePortfolio } from "@/lib/portfolio-store";
@@ -35,6 +35,7 @@ export function useLivePrices(enabled = true) {
 
   const getStockQuotes = useServerFn(fetchStockQuotes);
   const getCryptoQuotes = useServerFn(fetchCryptoQuotes);
+  const forceNextEquityRefreshRef = useRef(true);
 
   // Stable, sorted symbol/id lists. The query key is derived from these so
   // adding a holding or watchlist entry refetches its price immediately.
@@ -61,6 +62,14 @@ export function useLivePrices(enabled = true) {
     return { stockSymbols: stocks, cryptoIds: cryptos, symbolsKey: key };
   }, [holdings, watchlist]);
 
+  // When the cloud portfolio hydrates or the symbol list changes, bypass the
+  // shared quote cache once. This prevents a mobile/PWA open from briefly
+  // trusting yesterday's cloud prices when the user expects a fresh equity
+  // reconciliation immediately after login.
+  useEffect(() => {
+    forceNextEquityRefreshRef.current = true;
+  }, [symbolsKey]);
+
   const hasEquities = stockSymbols.length > 0;
   const baseMs = Math.max(1, interval) * 60_000;
   // Off-hours: stocks don't move — back off 6x, floor at 30 minutes.
@@ -82,9 +91,10 @@ export function useLivePrices(enabled = true) {
     },
     queryFn: async () => {
       const prices: PriceMap = {};
+      const forceEquityRefresh = forceNextEquityRefreshRef.current;
       const [stockRes, cryptoRes] = await Promise.allSettled([
         stockSymbols.length > 0
-          ? getStockQuotes({ data: { symbols: stockSymbols } })
+          ? getStockQuotes({ data: { symbols: stockSymbols, forceRefresh: forceEquityRefresh } })
           : Promise.resolve({ quotes: [] }),
         cryptoIds.length > 0
           ? getCryptoQuotes({ data: { ids: cryptoIds } })
@@ -103,6 +113,9 @@ export function useLivePrices(enabled = true) {
         }
       } else {
         console.warn("crypto quote fetch failed", cryptoRes.reason);
+      }
+      if (stockRes.status === "fulfilled") {
+        forceNextEquityRefreshRef.current = false;
       }
       return prices;
     },
