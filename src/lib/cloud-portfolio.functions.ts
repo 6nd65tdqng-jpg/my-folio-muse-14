@@ -11,6 +11,7 @@ const portfolioDataSchema = z.object({
   transactions: z.array(z.unknown()).default([]),
   history: z.array(z.unknown()).optional(),
   settings: z.record(z.unknown()).optional(),
+  lastPriceUpdate: z.string().nullable().optional(),
 });
 
 export const getCloudPortfolio = createServerFn({ method: "GET" })

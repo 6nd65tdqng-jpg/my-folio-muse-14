@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { usePortfolio } from "@/lib/portfolio-store";
@@ -23,7 +23,7 @@ function isUsMarketOpen(now: Date = new Date()): boolean {
   return mins >= 9 * 60 + 30 && mins < 16 * 60;
 }
 
-type PriceMap = Record<string, { price: number; prevClose?: number }>;
+type PriceMap = Record<string, { price: number; prevClose?: number; stale?: boolean }>;
 
 export function useLivePrices(enabled = true) {
   const holdings = usePortfolio((s) => s.holdings);
@@ -35,6 +35,7 @@ export function useLivePrices(enabled = true) {
 
   const getStockQuotes = useServerFn(fetchStockQuotes);
   const getCryptoQuotes = useServerFn(fetchCryptoQuotes);
+  const forceNextEquityRefreshRef = useRef(true);
 
   // Stable, sorted symbol/id lists. The query key is derived from these so
   // adding a holding or watchlist entry refetches its price immediately.
@@ -61,6 +62,14 @@ export function useLivePrices(enabled = true) {
     return { stockSymbols: stocks, cryptoIds: cryptos, symbolsKey: key };
   }, [holdings, watchlist]);
 
+  // When the cloud portfolio hydrates or the symbol list changes, bypass the
+  // shared quote cache once. This prevents a mobile/PWA open from briefly
+  // trusting yesterday's cloud prices when the user expects a fresh equity
+  // reconciliation immediately after login.
+  useEffect(() => {
+    forceNextEquityRefreshRef.current = true;
+  }, [symbolsKey]);
+
   const hasEquities = stockSymbols.length > 0;
   const baseMs = Math.max(1, interval) * 60_000;
   // Off-hours: stocks don't move — back off 6x, floor at 30 minutes.
@@ -82,9 +91,10 @@ export function useLivePrices(enabled = true) {
     },
     queryFn: async () => {
       const prices: PriceMap = {};
+      const forceEquityRefresh = forceNextEquityRefreshRef.current;
       const [stockRes, cryptoRes] = await Promise.allSettled([
         stockSymbols.length > 0
-          ? getStockQuotes({ data: { symbols: stockSymbols } })
+          ? getStockQuotes({ data: { symbols: stockSymbols, forceRefresh: forceEquityRefresh } })
           : Promise.resolve({ quotes: [] }),
         cryptoIds.length > 0
           ? getCryptoQuotes({ data: { ids: cryptoIds } })
@@ -92,7 +102,7 @@ export function useLivePrices(enabled = true) {
       ]);
       if (stockRes.status === "fulfilled") {
         for (const q of stockRes.value.quotes) {
-          prices[q.symbol] = { price: q.price, prevClose: q.prevClose };
+          prices[q.symbol] = { price: q.price, prevClose: q.prevClose, stale: q.stale };
         }
       } else {
         console.warn("stock quote fetch failed", stockRes.reason);
@@ -104,6 +114,9 @@ export function useLivePrices(enabled = true) {
       } else {
         console.warn("crypto quote fetch failed", cryptoRes.reason);
       }
+      if (stockRes.status === "fulfilled") {
+        forceNextEquityRefreshRef.current = false;
+      }
       return prices;
     },
   });
@@ -111,8 +124,18 @@ export function useLivePrices(enabled = true) {
   // Push fetched prices into the Zustand store (source of truth for holdings).
   const data = query.data;
   useEffect(() => {
-    if (data && Object.keys(data).length > 0) setPrices(data);
-  }, [data, setPrices]);
+    if (!data || Object.keys(data).length === 0) return;
+    const notFreshEquities = stockSymbols.filter((sym) => !data[sym] || data[sym].stale);
+    setPrices(data, { markRefreshed: notFreshEquities.length === 0 });
+
+    if (notFreshEquities.length > 0) {
+      setPriceError(
+        `Some prices did not refresh: ${notFreshEquities.slice(0, 6).join(", ")}${
+          notFreshEquities.length > 6 ? "…" : ""
+        }`,
+      );
+    }
+  }, [data, setPrices, setPriceError, stockSymbols]);
 
   // Mirror fetch state into the store so the header indicator can react.
   const isFetching = query.isFetching;
@@ -122,14 +145,23 @@ export function useLivePrices(enabled = true) {
 
   const { isError, error } = query;
   useEffect(() => {
-    setPriceError(
-      isError
-        ? error instanceof Error
-          ? error.message
-          : "Failed to fetch prices"
-        : null,
-    );
-  }, [isError, error, setPriceError]);
+    if (isError) {
+      setPriceError(error instanceof Error ? error.message : "Failed to fetch prices");
+      return;
+    }
+    const notFreshEquities = data
+      ? stockSymbols.filter((sym) => !data[sym] || data[sym].stale)
+      : [];
+    if (data && notFreshEquities.length > 0) {
+      setPriceError(
+        `Some prices did not refresh: ${notFreshEquities.slice(0, 6).join(", ")}${
+          notFreshEquities.length > 6 ? "…" : ""
+        }`,
+      );
+      return;
+    }
+    if (notFreshEquities.length === 0) setPriceError(null);
+  }, [isError, error, data, setPriceError, stockSymbols]);
 
   // Cloud-sync hydration finished — refetch to reconcile with the new holdings.
   const refetch = query.refetch;
