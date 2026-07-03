@@ -152,6 +152,14 @@ export function useLivePrices(enabled = true) {
     const notFreshEquities = data
       ? stockSymbols.filter((sym) => !data[sym] || data[sym].stale)
       : [];
+    if (data && notFreshEquities.length > 0) {
+      setPriceError(
+        `Some prices did not refresh: ${notFreshEquities.slice(0, 6).join(", ")}${
+          notFreshEquities.length > 6 ? "…" : ""
+        }`,
+      );
+      return;
+    }
     if (notFreshEquities.length === 0) setPriceError(null);
   }, [isError, error, data, setPriceError, stockSymbols]);
 
