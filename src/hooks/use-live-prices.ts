@@ -124,8 +124,8 @@ export function useLivePrices(enabled = true) {
   // Push fetched prices into the Zustand store (source of truth for holdings).
   const data = query.data;
   useEffect(() => {
-    const missingEquities = stockSymbols.filter((sym) => !data[sym]);
     if (!data || Object.keys(data).length === 0) return;
+    const missingEquities = stockSymbols.filter((sym) => !data[sym]);
     setPrices(data, { markRefreshed: missingEquities.length === 0 });
 
     if (missingEquities.length > 0) {
