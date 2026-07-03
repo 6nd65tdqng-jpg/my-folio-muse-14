@@ -39,6 +39,7 @@ interface PortfolioState {
   deleteTransaction: (id: string) => void;
   setPrices: (
     prices: Record<string, { price: number; prevClose?: number }>,
+    options?: { markRefreshed?: boolean },
   ) => void;
   replaceFromCloud: (data: PortfolioCloudData) => void;
   getCloudData: () => PortfolioCloudData;
@@ -286,7 +287,7 @@ export const usePortfolio = create<PortfolioState>()(
             holdings: reverseTransactionFromHoldings(s.holdings, tx),
           };
         }),
-      setPrices: (prices) =>
+      setPrices: (prices, options) =>
         set((s) => ({
           holdings: s.holdings.map((h) => {
             const k = h.coingeckoId ?? h.ticker.toUpperCase();
@@ -310,7 +311,7 @@ export const usePortfolio = create<PortfolioState>()(
               lastUpdated: new Date().toISOString(),
             };
           }),
-          lastPriceUpdate: new Date().toISOString(),
+          lastPriceUpdate: options?.markRefreshed === false ? s.lastPriceUpdate : new Date().toISOString(),
           priceError: null,
         })),
       replaceFromCloud: (data) =>
