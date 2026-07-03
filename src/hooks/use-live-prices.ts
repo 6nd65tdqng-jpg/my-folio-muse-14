@@ -124,8 +124,18 @@ export function useLivePrices(enabled = true) {
   // Push fetched prices into the Zustand store (source of truth for holdings).
   const data = query.data;
   useEffect(() => {
-    if (data && Object.keys(data).length > 0) setPrices(data);
-  }, [data, setPrices]);
+    if (!data || Object.keys(data).length === 0) return;
+    setPrices(data);
+
+    const missingEquities = stockSymbols.filter((sym) => !data[sym]);
+    if (missingEquities.length > 0) {
+      setPriceError(
+        `Some prices did not refresh: ${missingEquities.slice(0, 6).join(", ")}${
+          missingEquities.length > 6 ? "…" : ""
+        }`,
+      );
+    }
+  }, [data, setPrices, setPriceError, stockSymbols]);
 
   // Mirror fetch state into the store so the header indicator can react.
   const isFetching = query.isFetching;
@@ -135,14 +145,13 @@ export function useLivePrices(enabled = true) {
 
   const { isError, error } = query;
   useEffect(() => {
-    setPriceError(
-      isError
-        ? error instanceof Error
-          ? error.message
-          : "Failed to fetch prices"
-        : null,
-    );
-  }, [isError, error, setPriceError]);
+    if (isError) {
+      setPriceError(error instanceof Error ? error.message : "Failed to fetch prices");
+      return;
+    }
+    const missingEquities = data ? stockSymbols.filter((sym) => !data[sym]) : [];
+    if (missingEquities.length === 0) setPriceError(null);
+  }, [isError, error, data, setPriceError, stockSymbols]);
 
   // Cloud-sync hydration finished — refetch to reconcile with the new holdings.
   const refetch = query.refetch;
