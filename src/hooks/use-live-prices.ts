@@ -23,7 +23,7 @@ function isUsMarketOpen(now: Date = new Date()): boolean {
   return mins >= 9 * 60 + 30 && mins < 16 * 60;
 }
 
-type PriceMap = Record<string, { price: number; prevClose?: number }>;
+type PriceMap = Record<string, { price: number; prevClose?: number; stale?: boolean }>;
 
 export function useLivePrices(enabled = true) {
   const holdings = usePortfolio((s) => s.holdings);
@@ -102,7 +102,7 @@ export function useLivePrices(enabled = true) {
       ]);
       if (stockRes.status === "fulfilled") {
         for (const q of stockRes.value.quotes) {
-          prices[q.symbol] = { price: q.price, prevClose: q.prevClose };
+          prices[q.symbol] = { price: q.price, prevClose: q.prevClose, stale: q.stale };
         }
       } else {
         console.warn("stock quote fetch failed", stockRes.reason);
@@ -125,13 +125,13 @@ export function useLivePrices(enabled = true) {
   const data = query.data;
   useEffect(() => {
     if (!data || Object.keys(data).length === 0) return;
-    const missingEquities = stockSymbols.filter((sym) => !data[sym]);
-    setPrices(data, { markRefreshed: missingEquities.length === 0 });
+    const notFreshEquities = stockSymbols.filter((sym) => !data[sym] || data[sym].stale);
+    setPrices(data, { markRefreshed: notFreshEquities.length === 0 });
 
-    if (missingEquities.length > 0) {
+    if (notFreshEquities.length > 0) {
       setPriceError(
-        `Some prices did not refresh: ${missingEquities.slice(0, 6).join(", ")}${
-          missingEquities.length > 6 ? "…" : ""
+        `Some prices did not refresh: ${notFreshEquities.slice(0, 6).join(", ")}${
+          notFreshEquities.length > 6 ? "…" : ""
         }`,
       );
     }
@@ -149,8 +149,10 @@ export function useLivePrices(enabled = true) {
       setPriceError(error instanceof Error ? error.message : "Failed to fetch prices");
       return;
     }
-    const missingEquities = data ? stockSymbols.filter((sym) => !data[sym]) : [];
-    if (missingEquities.length === 0) setPriceError(null);
+    const notFreshEquities = data
+      ? stockSymbols.filter((sym) => !data[sym] || data[sym].stale)
+      : [];
+    if (notFreshEquities.length === 0) setPriceError(null);
   }, [isError, error, data, setPriceError, stockSymbols]);
 
   // Cloud-sync hydration finished — refetch to reconcile with the new holdings.

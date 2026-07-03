@@ -14,6 +14,7 @@ export interface QuoteResult {
   symbol: string;
   price: number;
   prevClose: number;
+  stale?: boolean;
 }
 
 export interface CryptoQuoteResult {
@@ -280,7 +281,7 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
       if (freshSyms.has(sym)) continue;
       const hit = cacheMap.get(sym);
       if (hit) {
-        fresh.push({ symbol: sym, price: hit.price, prevClose: hit.prev_close });
+        fresh.push({ symbol: sym, price: hit.price, prevClose: hit.prev_close, stale: true });
       }
     }
 
