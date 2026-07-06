@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { fetchWithRateLimit } from "@/lib/rate-limiter";
 
 const CACHE_TTL_MS = 60 * 1000; // 1 minute
 
@@ -180,15 +181,26 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
     const usSymbols = staleSymbols.filter((s) => !s.includes("."));
     const fresh: QuoteResult[] = [];
 
-    // Finnhub for US tickers
+    // Finnhub for US tickers.
+    // Finnhub's free tier caps at ~60 requests/minute and, crucially,
+    // rejects large concurrent bursts: firing all ~30 symbols at once returns
+    // HTTP 429 for most of them. Previously those 429s threw, were swallowed,
+    // and every affected symbol silently fell back to a stale cached price —
+    // which is why most tickers stopped refreshing. We now cap concurrency to
+    // a small window and retry 429s with exponential backoff so each symbol
+    // actually gets a live quote.
     if (finnhubKey && usSymbols.length > 0) {
-      const batchSize = 10;
-      for (let i = 0; i < usSymbols.length; i += batchSize) {
-        const batch = usSymbols.slice(i, i + batchSize);
+      const CONCURRENCY = 4;
+      for (let i = 0; i < usSymbols.length; i += CONCURRENCY) {
+        const batch = usSymbols.slice(i, i + CONCURRENCY);
         const settled = await Promise.allSettled(
           batch.map(async (sym) => {
             const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(sym)}&token=${finnhubKey}`;
-            const r = await fetch(url);
+            const r = await fetchWithRateLimit(url, undefined, {
+              maxRetries: 4,
+              initialDelayMs: 1200,
+              maxDelayMs: 8000,
+            });
             if (!r.ok) throw new Error(`${sym}: ${r.status}`);
             const q = (await r.json()) as FinnhubQuote;
             if (!q || typeof q.c !== "number" || q.c === 0) return null;
