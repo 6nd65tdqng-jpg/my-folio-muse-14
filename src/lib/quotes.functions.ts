@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { fetchWithRateLimit } from "@/lib/rate-limiter";
 
 const CACHE_TTL_MS = 60 * 1000; // 1 minute
 
