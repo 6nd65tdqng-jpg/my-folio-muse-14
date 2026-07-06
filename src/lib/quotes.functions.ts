@@ -198,6 +198,7 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
 
     const finnhubKey = process.env.FINNHUB_API_KEY;
     const twelveKey = process.env.TWELVEDATA_API_KEY;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const results: QuoteResult[] = [];
     const now = Date.now();
@@ -226,12 +227,19 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
 
     if (staleSymbols.length === 0) return { quotes: results };
 
-    // Route: symbols with a "." (e.g. 0700.HK) go to Twelve Data; rest to Finnhub.
-    const intlSymbols = staleSymbols.filter((s) => s.includes("."));
-    const usSymbols = staleSymbols.filter((s) => !s.includes("."));
-    const fresh: QuoteResult[] = [];
+    // Primary equity source: Yahoo chart endpoint. It supports US equities,
+    // ETFs, and many international suffixes (e.g. 0700.HK) in one consistent
+    // shape and avoids burning the very small Finnhub free-tier quota on every
+    // portfolio refresh. Finnhub/Twelve Data stay as fallbacks only.
+    const fresh: QuoteResult[] = await fetchYahooQuotes(staleSymbols);
 
-    // Finnhub for US tickers.
+    // Route only the symbols Yahoo could not refresh: symbols with a "." go to
+    // Twelve Data; the rest go to Finnhub.
+    const yahooMissing = missingSymbols(staleSymbols, fresh);
+    const intlSymbols = yahooMissing.filter((s) => s.includes("."));
+    const usSymbols = yahooMissing.filter((s) => !s.includes("."));
+
+    // Finnhub fallback for US tickers.
     // Finnhub's free tier caps at ~60 requests/minute and, crucially,
     // rejects large concurrent bursts: firing all ~30 symbols at once returns
     // HTTP 429 for most of them. Previously those 429s threw, were swallowed,
