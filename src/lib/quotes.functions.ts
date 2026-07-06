@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { fetchWithRateLimit } from "@/lib/rate-limiter";
 
 const CACHE_TTL_MS = 60 * 1000; // 1 minute
@@ -9,6 +8,18 @@ interface FinnhubQuote {
   pc: number; // previous close
   d: number | null;
   dp: number | null;
+}
+
+interface YahooQuoteChart {
+  chart?: {
+    result?: Array<{
+      meta?: {
+        regularMarketPrice?: number;
+        chartPreviousClose?: number;
+        previousClose?: number;
+      };
+    }>;
+  };
 }
 
 export interface QuoteResult {
@@ -37,6 +48,45 @@ export interface IndexQuote {
   prevClose: number;
   change: number;
   changePct: number;
+}
+
+async function fetchYahooQuote(symbol: string): Promise<QuoteResult | null> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+    symbol,
+  )}?interval=1m&range=1d&includePrePost=false`;
+  const r = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; PortfolioApp/1.0)" },
+  });
+  if (!r.ok) throw new Error(`${symbol}: Yahoo ${r.status}`);
+  const json = (await r.json()) as YahooQuoteChart;
+  const meta = json.chart?.result?.[0]?.meta;
+  const price = Number(meta?.regularMarketPrice);
+  const prevClose = Number(meta?.chartPreviousClose ?? meta?.previousClose);
+  if (!Number.isFinite(price) || price <= 0) return null;
+  return {
+    symbol,
+    price,
+    prevClose: Number.isFinite(prevClose) && prevClose > 0 ? prevClose : price,
+  };
+}
+
+async function fetchYahooQuotes(symbols: string[]): Promise<QuoteResult[]> {
+  const quotes: QuoteResult[] = [];
+  const CONCURRENCY = 6;
+  for (let i = 0; i < symbols.length; i += CONCURRENCY) {
+    const batch = symbols.slice(i, i + CONCURRENCY);
+    const settled = await Promise.allSettled(batch.map((sym) => fetchYahooQuote(sym)));
+    for (const s of settled) {
+      if (s.status === "fulfilled" && s.value) quotes.push(s.value);
+      else if (s.status === "rejected") console.warn("Yahoo quote fetch failed", s.reason);
+    }
+  }
+  return quotes;
+}
+
+function missingSymbols(requested: string[], fresh: QuoteResult[]): string[] {
+  const have = new Set(fresh.map((q) => q.symbol));
+  return requested.filter((sym) => !have.has(sym));
 }
 
 const HISTORY_CACHE_TTL_MS = 30 * 60 * 1000;
