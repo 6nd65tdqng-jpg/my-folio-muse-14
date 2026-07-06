@@ -136,7 +136,13 @@ export function useLivePrices(enabled = true) {
         }`,
       );
     }
-  }, [data, setPrices, setPriceError, stockSymbols]);
+    // `symbolsKey` (a stable string) is used instead of the `stockSymbols`
+    // array reference on purpose: setPrices mutates holdings, which produces a
+    // brand-new stockSymbols array each render even when the symbols are
+    // identical. Depending on the array reference here would re-run this effect
+    // -> setPrices -> new array -> infinite loop (React error #185).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, setPrices, setPriceError, symbolsKey]);
 
   // Mirror fetch state into the store so the header indicator can react.
   const isFetching = query.isFetching;
@@ -162,7 +168,10 @@ export function useLivePrices(enabled = true) {
       return;
     }
     if (notFreshEquities.length === 0) setPriceError(null);
-  }, [isError, error, data, setPriceError, stockSymbols]);
+    // See note above: depend on the stable symbolsKey, not the stockSymbols
+    // array reference, to avoid an infinite update loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isError, error, data, setPriceError, symbolsKey]);
 
   // Cloud-sync hydration finished — refetch to reconcile with the new holdings.
   const refetch = query.refetch;
