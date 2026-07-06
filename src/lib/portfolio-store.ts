@@ -38,7 +38,7 @@ interface PortfolioState {
   updateTransaction: (id: string, patch: Partial<Omit<Transaction, "id">>) => void;
   deleteTransaction: (id: string) => void;
   setPrices: (
-    prices: Record<string, { price: number; prevClose?: number }>,
+    prices: Record<string, { price: number; prevClose?: number; stale?: boolean }>,
     options?: { markRefreshed?: boolean },
   ) => void;
   replaceFromCloud: (data: PortfolioCloudData) => void;
@@ -297,7 +297,7 @@ export const usePortfolio = create<PortfolioState>()(
               ...h,
               currentPrice: p.price,
               prevClose: p.prevClose ?? h.prevClose,
-              lastUpdated: new Date().toISOString(),
+              lastUpdated: p.stale ? h.lastUpdated : new Date().toISOString(),
             };
           }),
           watchlist: s.watchlist.map((h) => {
@@ -308,7 +308,7 @@ export const usePortfolio = create<PortfolioState>()(
               ...h,
               currentPrice: p.price,
               prevClose: p.prevClose ?? h.prevClose,
-              lastUpdated: new Date().toISOString(),
+              lastUpdated: p.stale ? h.lastUpdated : new Date().toISOString(),
             };
           }),
           lastPriceUpdate: options?.markRefreshed === false ? s.lastPriceUpdate : new Date().toISOString(),

@@ -126,7 +126,8 @@ export function useLivePrices(enabled = true) {
   useEffect(() => {
     if (!data || Object.keys(data).length === 0) return;
     const notFreshEquities = stockSymbols.filter((sym) => !data[sym] || data[sym].stale);
-    setPrices(data, { markRefreshed: notFreshEquities.length === 0 });
+    const freshEquities = stockSymbols.filter((sym) => data[sym] && !data[sym].stale);
+    setPrices(data, { markRefreshed: freshEquities.length > 0 });
 
     if (notFreshEquities.length > 0) {
       setPriceError(
