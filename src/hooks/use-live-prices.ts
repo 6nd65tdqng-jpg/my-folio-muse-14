@@ -115,7 +115,10 @@ export function useLivePrices(enabled = true) {
         console.warn("crypto quote fetch failed", cryptoRes.reason);
       }
       if (stockRes.status === "fulfilled") {
-        forceNextEquityRefreshRef.current = false;
+        const refreshedAnyEquity = stockRes.value.quotes.some((q) => !q.stale);
+        if (refreshedAnyEquity || stockSymbols.length === 0) {
+          forceNextEquityRefreshRef.current = false;
+        }
       }
       return prices;
     },
@@ -129,12 +132,14 @@ export function useLivePrices(enabled = true) {
     const freshEquities = stockSymbols.filter((sym) => data[sym] && !data[sym].stale);
     setPrices(data, { markRefreshed: freshEquities.length > 0 });
 
-    if (notFreshEquities.length > 0) {
+    if (notFreshEquities.length > 0 && freshEquities.length === 0) {
       setPriceError(
-        `Some prices did not refresh: ${notFreshEquities.slice(0, 6).join(", ")}${
+        `Prices may be stale: ${notFreshEquities.slice(0, 6).join(", ")}${
           notFreshEquities.length > 6 ? "…" : ""
         }`,
       );
+    } else {
+      setPriceError(null);
     }
     // `symbolsKey` (a stable string) is used instead of the `stockSymbols`
     // array reference on purpose: setPrices mutates holdings, which produces a
@@ -159,9 +164,12 @@ export function useLivePrices(enabled = true) {
     const notFreshEquities = data
       ? stockSymbols.filter((sym) => !data[sym] || data[sym].stale)
       : [];
-    if (data && notFreshEquities.length > 0) {
+    const freshEquities = data
+      ? stockSymbols.filter((sym) => data[sym] && !data[sym].stale)
+      : [];
+    if (data && notFreshEquities.length > 0 && freshEquities.length === 0) {
       setPriceError(
-        `Some prices did not refresh: ${notFreshEquities.slice(0, 6).join(", ")}${
+        `Prices may be stale: ${notFreshEquities.slice(0, 6).join(", ")}${
           notFreshEquities.length > 6 ? "…" : ""
         }`,
       );
