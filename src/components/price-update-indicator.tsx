@@ -13,6 +13,7 @@ export function CompactPriceIndicator() {
   const error = usePortfolio((s) => s.priceError);
   const lastPriceUpdate = usePortfolio((s) => s.lastPriceUpdate);
   const refreshedAt = formatRefreshTime(lastPriceUpdate);
+  const staleWarning = Boolean(error?.toLowerCase().includes("stale"));
 
   return (
     <div className="flex h-8 shrink-0 items-center gap-2 text-muted-foreground">
@@ -29,8 +30,14 @@ export function CompactPriceIndicator() {
       >
         {error ? (
           <>
-            <AlertCircle className="h-3.5 w-3.5 text-destructive" />
-            <span className="font-medium text-destructive text-xs">Error</span>
+            {staleWarning ? (
+              <Clock3 className="h-3.5 w-3.5 text-muted-foreground" />
+            ) : (
+              <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+            )}
+            <span className={staleWarning ? "text-xs" : "font-medium text-destructive text-xs"}>
+              {staleWarning ? "Stale" : "Error"}
+            </span>
           </>
         ) : fetching ? (
           <>
