@@ -2,6 +2,17 @@ import { createServerFn } from "@tanstack/react-start";
 import { fetchWithRateLimit } from "@/lib/rate-limiter";
 
 const CACHE_TTL_MS = 60 * 1000; // 1 minute
+const FUND_CACHE_TTL_MS = 30 * 60 * 1000; // funds price once per day; avoid repeated page pulls
+
+const FUND_QUOTE_ALIASES: Record<
+  string,
+  { ftSymbol: string; minPrice?: number; maxPrice?: number }
+> = {
+  // User-entered MSUSX represents Morgan Stanley Investment Funds - US Advantage Fund A
+  // (ISIN LU0225737302). Yahoo's MSUSX is a different US mutual fund, so route this
+  // alias to the fund NAV instead of the ticker quote.
+  MSUSX: { ftSymbol: "LU0225737302:USD", minPrice: 50, maxPrice: 500 },
+};
 
 interface FinnhubQuote {
   c: number; // current
@@ -20,6 +31,62 @@ interface YahooQuoteChart {
       };
     }>;
   };
+}
+
+function parseNumber(value: string | undefined): number {
+  return Number(String(value ?? "").replace(/,/g, ""));
+}
+
+function isFundAliasCacheUsable(
+  symbol: string,
+  hit: { price: number; updated_at: string } | undefined,
+  now: number,
+  forceRefresh: boolean,
+): boolean {
+  const alias = FUND_QUOTE_ALIASES[symbol.toUpperCase()];
+  if (!alias || !hit || forceRefresh) return false;
+  if (alias.minPrice !== undefined && hit.price < alias.minPrice) return false;
+  if (alias.maxPrice !== undefined && hit.price > alias.maxPrice) return false;
+  return now - new Date(hit.updated_at).getTime() < FUND_CACHE_TTL_MS;
+}
+
+async function fetchFtFundQuote(symbol: string, ftSymbol: string): Promise<QuoteResult | null> {
+  const url = `https://markets.ft.com/data/funds/tearsheet/summary?s=${encodeURIComponent(
+    ftSymbol,
+  )}`;
+  const r = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; PortfolioApp/1.0)" },
+  });
+  if (!r.ok) throw new Error(`${symbol}: FT ${r.status}`);
+  const html = await r.text();
+  const priceMatch = html.match(
+    /Price \([A-Z]{3}\)<\/span>\s*<span class="mod-ui-data-list__value">([^<]+)/,
+  );
+  const price = parseNumber(priceMatch?.[1]);
+  if (!Number.isFinite(price) || price <= 0) return null;
+
+  const changeBlock = html.match(/Today's Change[\s\S]{0,1200}?<\/li>/)?.[0] ?? "";
+  const changeText = changeBlock.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+  const changeMatch = changeText.match(/([+-]?\d[\d,]*(?:\.\d+)?)\s*\/\s*([+-]?\d[\d,]*(?:\.\d+)?)%/);
+  const change = parseNumber(changeMatch?.[1]);
+  const prevClose = Number.isFinite(change) ? price - change : price;
+
+  return { symbol, price, prevClose: prevClose > 0 ? prevClose : price };
+}
+
+async function fetchFundAliasQuotes(symbols: string[]): Promise<QuoteResult[]> {
+  const quotes: QuoteResult[] = [];
+  const settled = await Promise.allSettled(
+    symbols.map((sym) => {
+      const alias = FUND_QUOTE_ALIASES[sym.toUpperCase()];
+      return alias ? fetchFtFundQuote(sym, alias.ftSymbol) : Promise.resolve(null);
+    }),
+  );
+  for (const s of settled) {
+    if (s.status === "fulfilled" && s.value) quotes.push(s.value);
+    else if (s.status === "rejected") console.warn("fund quote fetch failed", s.reason);
+  }
+  return quotes;
 }
 
 export interface QuoteResult {
@@ -218,7 +285,12 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
     const staleSymbols: string[] = [];
     for (const sym of data.symbols) {
       const hit = cacheMap.get(sym);
-      if (!data.forceRefresh && hit && now - new Date(hit.updated_at).getTime() < CACHE_TTL_MS) {
+      const fundAlias = Boolean(FUND_QUOTE_ALIASES[sym.toUpperCase()]);
+      if (fundAlias && isFundAliasCacheUsable(sym, hit, now, data.forceRefresh)) {
+        results.push({ symbol: sym, price: hit!.price, prevClose: hit!.prev_close });
+      } else if (fundAlias) {
+        staleSymbols.push(sym);
+      } else if (!data.forceRefresh && hit && now - new Date(hit.updated_at).getTime() < CACHE_TTL_MS) {
         results.push({ symbol: sym, price: hit.price, prevClose: hit.prev_close });
       } else {
         staleSymbols.push(sym);
@@ -231,11 +303,15 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
     // ETFs, and many international suffixes (e.g. 0700.HK) in one consistent
     // shape and avoids burning the very small Finnhub free-tier quota on every
     // portfolio refresh. Finnhub/Twelve Data stay as fallbacks only.
-    const fresh: QuoteResult[] = await fetchYahooQuotes(staleSymbols);
+    const fundAliasSymbols = staleSymbols.filter((s) => FUND_QUOTE_ALIASES[s.toUpperCase()]);
+    const normalSymbols = staleSymbols.filter((s) => !FUND_QUOTE_ALIASES[s.toUpperCase()]);
+    const fresh: QuoteResult[] = await fetchFundAliasQuotes(fundAliasSymbols);
+
+    fresh.push(...(await fetchYahooQuotes(normalSymbols)));
 
     // Route only the symbols Yahoo could not refresh: symbols with a "." go to
     // Twelve Data; the rest go to Finnhub.
-    const yahooMissing = missingSymbols(staleSymbols, fresh);
+    const yahooMissing = missingSymbols(normalSymbols, fresh);
     const intlSymbols = yahooMissing.filter((s) => s.includes("."));
     const usSymbols = yahooMissing.filter((s) => !s.includes("."));
 
