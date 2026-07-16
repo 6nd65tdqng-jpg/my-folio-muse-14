@@ -286,7 +286,7 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
     for (const sym of data.symbols) {
       const hit = cacheMap.get(sym);
       if (isFundAliasCacheUsable(sym, hit, now, data.forceRefresh)) {
-        results.push({ symbol: sym, price: hit.price, prevClose: hit.prev_close });
+        results.push({ symbol: sym, price: hit!.price, prevClose: hit!.prev_close });
       } else if (!data.forceRefresh && hit && now - new Date(hit.updated_at).getTime() < CACHE_TTL_MS) {
         results.push({ symbol: sym, price: hit.price, prevClose: hit.prev_close });
       } else {
