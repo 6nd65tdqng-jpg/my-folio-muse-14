@@ -285,8 +285,11 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
     const staleSymbols: string[] = [];
     for (const sym of data.symbols) {
       const hit = cacheMap.get(sym);
-      if (isFundAliasCacheUsable(sym, hit, now, data.forceRefresh)) {
+      const fundAlias = Boolean(FUND_QUOTE_ALIASES[sym.toUpperCase()]);
+      if (fundAlias && isFundAliasCacheUsable(sym, hit, now, data.forceRefresh)) {
         results.push({ symbol: sym, price: hit!.price, prevClose: hit!.prev_close });
+      } else if (fundAlias) {
+        staleSymbols.push(sym);
       } else if (!data.forceRefresh && hit && now - new Date(hit.updated_at).getTime() < CACHE_TTL_MS) {
         results.push({ symbol: sym, price: hit.price, prevClose: hit.prev_close });
       } else {
