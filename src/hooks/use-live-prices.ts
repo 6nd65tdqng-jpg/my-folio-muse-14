@@ -162,7 +162,7 @@ export function useLivePrices(enabled = true) {
     // identical. Depending on the array reference here would re-run this effect
     // -> setPrices -> new array -> infinite loop (React error #185).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, saveCloud, setPrices, setPriceError, symbolsKey]);
+  }, [data, setPrices, setPriceError, symbolsKey]);
 
   // Mirror fetch state into the store so the header indicator can react.
   const isFetching = query.isFetching;
