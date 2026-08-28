@@ -15,6 +15,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useEffect } from "react";
 import { usePortfolio } from "@/lib/portfolio-store";
 import { useLivePrices } from "@/hooks/use-live-prices";
+import { useLiveFx } from "@/hooks/use-live-fx";
 import { PortfolioHeaderStats } from "@/components/portfolio-header-stats";
 import { MarketStatus } from "@/components/market-status";
 import { CompactPriceIndicator } from "@/components/price-update-indicator";
@@ -172,6 +173,7 @@ function AppShell() {
     else root.classList.remove("dark");
   }, [theme]);
   useLivePrices(cloud.ready);
+  useLiveFx(cloud.ready);
 
   if (!cloud.ready) {
     return (
