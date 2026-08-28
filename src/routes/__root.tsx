@@ -173,6 +173,7 @@ function AppShell() {
     else root.classList.remove("dark");
   }, [theme]);
   useLivePrices(cloud.ready);
+  useLiveFx(cloud.ready);
 
   if (!cloud.ready) {
     return (
