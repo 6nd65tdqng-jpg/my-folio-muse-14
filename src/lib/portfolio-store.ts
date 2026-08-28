@@ -60,7 +60,7 @@ const defaultSettings: Settings = {
   baseCurrency: "USD",
   refreshIntervalMin: 5,
   theme: "dark",
-  fxRates: { USD: 1, HKD: 0.128, EUR: 1.08, GBP: 1.27, JPY: 0.0064, CNY: 0.14 },
+  fxRates: { USD: 1, HKD: 0.1276, EUR: 1.1647, GBP: 1.34, JPY: 0.0068, CNY: 0.14 },
 };
 
 const seed: Holding[] = SEED_HOLDINGS;
