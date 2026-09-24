@@ -82,7 +82,7 @@ function applyTransactionToHoldings(holdings: Holding[], tx: Transaction) {
   const ticker = tx.ticker.trim().toUpperCase();
   const key = holdingKey(ticker, tx.currency);
   const idx = holdings.findIndex((h) => holdingKey(h.ticker, h.currency) === key);
-  const transaction: Transaction = { ...tx, ticker };
+  const transaction: Transaction = { ...tx, ticker, realizedPnl: undefined };
 
   if (transaction.type === "buy") {
     if (idx === -1) {
@@ -117,35 +117,63 @@ function applyTransactionToHoldings(holdings: Holding[], tx: Transaction) {
     return { holdings: next, transaction };
   }
 
-  if (idx === -1) return { holdings, transaction };
+  if (idx === -1) return { holdings, transaction: { ...transaction, quantity: 0 } };
   const prev = holdings[idx];
   const sellQty = Math.min(transaction.quantity, prev.quantity);
   const next = [...holdings];
+  transaction.quantity = sellQty;
   transaction.realizedPnl = (transaction.price - prev.avgCostBasis) * sellQty;
   next[idx] = { ...prev, quantity: Math.max(0, prev.quantity - sellQty) };
   return { holdings: next, transaction };
 }
 
-function reverseTransactionFromHoldings(holdings: Holding[], tx: Transaction) {
-  const key = holdingKey(tx.ticker, tx.currency);
-  const idx = holdings.findIndex((h) => holdingKey(h.ticker, h.currency) === key);
-  if (idx === -1) return holdings;
-  const prev = holdings[idx];
-  const next = [...holdings];
-  if (tx.type === "buy") {
-    const newQty = Math.max(0, prev.quantity - tx.quantity);
-    const newAvg =
-      newQty > 0
-        ? Math.max(
-            0,
-            (prev.quantity * prev.avgCostBasis - tx.quantity * tx.price) / newQty,
-          )
-        : 0;
-    next[idx] = { ...prev, quantity: newQty, avgCostBasis: newAvg };
-  } else {
-    next[idx] = { ...prev, quantity: prev.quantity + tx.quantity };
+function replayTransactions(transactions: Transaction[], priorHoldings: Holding[]) {
+  const priorByKey = new Map(
+    priorHoldings.map((h) => [holdingKey(h.ticker, h.currency), h]),
+  );
+  const ordered = transactions
+    .map((tx, index) => ({ tx, index }))
+    .sort((a, b) => {
+      const byDate = a.tx.date.localeCompare(b.tx.date);
+      return byDate !== 0 ? byDate : b.index - a.index;
+    });
+  const normalizedById = new Map<string, Transaction>();
+  let holdings: Holding[] = [];
+
+  for (const { tx } of ordered) {
+    const applied = applyTransactionToHoldings(holdings, tx);
+    holdings = applied.holdings;
+    if (applied.transaction.quantity > 1e-9) {
+      normalizedById.set(tx.id, applied.transaction);
+    }
   }
-  return next;
+
+  holdings = holdings
+    .filter((h) => h.quantity > 1e-9)
+    .map((h) => {
+      const prior = priorByKey.get(holdingKey(h.ticker, h.currency));
+      return prior
+        ? {
+            ...h,
+            id: prior.id,
+            name: prior.name || h.name,
+            assetType: prior.assetType,
+            exchange: prior.exchange,
+            currentPrice: prior.currentPrice > 0 ? prior.currentPrice : h.currentPrice,
+            prevClose: prior.prevClose,
+            coingeckoId: prior.coingeckoId,
+            lastUpdated: prior.lastUpdated,
+          }
+        : h;
+    });
+
+  return {
+    holdings,
+    transactions: transactions.flatMap((tx) => {
+      const normalized = normalizedById.get(tx.id);
+      return normalized ? [normalized] : [];
+    }),
+  };
 }
 
 export const usePortfolio = create<PortfolioState>()(
@@ -246,23 +274,13 @@ export const usePortfolio = create<PortfolioState>()(
             id: crypto.randomUUID(),
             ticker: t.ticker.trim().toUpperCase(),
           };
-          const applied = applyTransactionToHoldings(s.holdings, tx);
-          // Drop fully-closed positions so the UI doesn't show empty rows.
-          const cleanedHoldings = applied.holdings.filter(
-            (h) => h.quantity > 1e-9,
-          );
-          const nextTransactions = [applied.transaction, ...s.transactions];
-          return {
-            holdings: cleanedHoldings,
-            transactions: nextTransactions,
-          };
+          return replayTransactions([tx, ...s.transactions], s.holdings);
         });
       },
       updateTransaction: (id, patch) =>
         set((s) => {
           const tx = s.transactions.find((t) => t.id === id);
           if (!tx) return s;
-          const reversed = reverseTransactionFromHoldings(s.holdings, tx);
           const merged: Transaction = {
             ...tx,
             ...patch,
@@ -270,22 +288,19 @@ export const usePortfolio = create<PortfolioState>()(
             ticker: (patch.ticker ?? tx.ticker).toUpperCase(),
           };
           if (merged.quantity <= 0) return s;
-          const applied = applyTransactionToHoldings(reversed, merged);
-          return {
-            holdings: applied.holdings,
-            transactions: s.transactions.map((t) =>
-              t.id === id ? applied.transaction : t,
-            ),
-          };
+          return replayTransactions(
+            s.transactions.map((item) => (item.id === id ? merged : item)),
+            s.holdings,
+          );
         }),
       deleteTransaction: (id) =>
         set((s) => {
           const tx = s.transactions.find((t) => t.id === id);
           if (!tx) return s;
-          return {
-            transactions: s.transactions.filter((t) => t.id !== id),
-            holdings: reverseTransactionFromHoldings(s.holdings, tx),
-          };
+          return replayTransactions(
+            s.transactions.filter((item) => item.id !== id),
+            s.holdings,
+          );
         }),
       setPrices: (prices, options) =>
         set((s) => ({
@@ -365,36 +380,7 @@ export const usePortfolio = create<PortfolioState>()(
           seedVersion: PORTFOLIO_SEED_VERSION,
         })),
       rebuildHoldingsFromTransactions: () =>
-        set((s) => {
-          const sorted = [...s.transactions].sort((a, b) =>
-            a.date.localeCompare(b.date),
-          );
-          // Preserve currentPrice/prevClose/name from existing holdings.
-          const priorByKey = new Map(
-            s.holdings.map((h) => [holdingKey(h.ticker, h.currency), h]),
-          );
-          let acc: Holding[] = [];
-          for (const tx of sorted) {
-            const applied = applyTransactionToHoldings(acc, tx);
-            acc = applied.holdings;
-          }
-          const cleaned = acc
-            .filter((h) => h.quantity > 1e-9)
-            .map((h) => {
-              const prior = priorByKey.get(holdingKey(h.ticker, h.currency));
-              return prior
-                ? {
-                    ...h,
-                    name: prior.name || h.name,
-                    assetType: prior.assetType,
-                    currentPrice: prior.currentPrice || h.currentPrice,
-                    prevClose: prior.prevClose,
-                    coingeckoId: prior.coingeckoId,
-                  }
-                : h;
-            });
-          return { holdings: cleaned };
-        }),
+        set((s) => replayTransactions(s.transactions, s.holdings)),
       resetAll: () =>
         set(() => ({
           holdings: seed,

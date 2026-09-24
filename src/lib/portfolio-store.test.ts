@@ -208,5 +208,53 @@ describe("portfolio-store: weighted-average cost basis", () => {
         }
       }
     });
+
+    it("deleting a sale that closed a position restores the holding", () => {
+      usePortfolio.getState().addHolding(baseHolding);
+      usePortfolio.getState().addTransaction({
+        type: "sell", ticker: "TEST", quantity: 10, price: 150,
+        date: "2024-02-01", fees: 0, currency: "USD",
+      });
+      const sale = usePortfolio.getState().transactions[0];
+      expect(get("TEST")).toBeUndefined();
+
+      usePortfolio.getState().deleteTransaction(sale.id);
+
+      expect(get("TEST")?.quantity).toBe(10);
+      expect(get("TEST")?.avgCostBasis).toBe(100);
+    });
+
+    it("editing an earlier buy replays later sales and realized P&L", () => {
+      usePortfolio.getState().addHolding(baseHolding);
+      usePortfolio.getState().addTransaction({
+        type: "sell", ticker: "TEST", quantity: 4, price: 150,
+        date: "2024-03-01", fees: 0, currency: "USD",
+      });
+      const buy = usePortfolio.getState().transactions.find((tx) => tx.type === "buy");
+      const sale = usePortfolio.getState().transactions.find((tx) => tx.type === "sell");
+      expect(buy).toBeDefined();
+      expect(sale).toBeDefined();
+
+      if (!buy || !sale) return;
+      usePortfolio.getState().updateTransaction(buy.id, { price: 120 });
+
+      expect(get("TEST")?.quantity).toBe(6);
+      expect(get("TEST")?.avgCostBasis).toBe(120);
+      expect(
+        usePortfolio.getState().transactions.find((tx) => tx.id === sale.id)?.realizedPnl,
+      ).toBe(120);
+    });
+
+    it("records only shares actually sold when a caller oversells", () => {
+      usePortfolio.getState().addHolding(baseHolding);
+      usePortfolio.getState().addTransaction({
+        type: "sell", ticker: "TEST", quantity: 12, price: 150,
+        date: "2024-02-01", fees: 0, currency: "USD",
+      });
+
+      const sale = usePortfolio.getState().transactions[0];
+      expect(sale.quantity).toBe(10);
+      expect(sale.realizedPnl).toBe(500);
+    });
   });
 });
