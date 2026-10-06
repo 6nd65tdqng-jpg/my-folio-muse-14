@@ -12,6 +12,8 @@ const FUND_QUOTE_ALIASES: Record<
   // (ISIN LU0225737302). Yahoo's MSUSX is a different US mutual fund, so route this
   // alias to the fund NAV instead of the ticker quote.
   MSUSX: { ftSymbol: "LU0225737302:USD", minPrice: 50, maxPrice: 500 },
+  // BlackRock Global Funds - India Fund A2 USD (ISIN LU0248272758).
+  BRKINDM: { ftSymbol: "LU0248272758:USD", minPrice: 10, maxPrice: 300 },
 };
 
 interface FinnhubQuote {
@@ -117,9 +119,17 @@ export interface IndexQuote {
   changePct: number;
 }
 
+// Holdings saved under a bare ticker that Yahoo only lists with an exchange
+// suffix. The saved ticker is kept; only the lookup symbol changes.
+const YAHOO_SYMBOL_ALIASES: Record<string, string> = {
+  // Invesco EURO STOXX Optimised Banks UCITS ETF (EUR) — Xetra listing.
+  S7XE: "S7XE.DE",
+};
+
 async function fetchYahooQuote(symbol: string): Promise<QuoteResult | null> {
+  const lookup = YAHOO_SYMBOL_ALIASES[symbol.toUpperCase()] ?? symbol;
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
-    symbol,
+    lookup,
   )}?interval=1m&range=1d&includePrePost=false`;
   const r = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; PortfolioApp/1.0)" },
