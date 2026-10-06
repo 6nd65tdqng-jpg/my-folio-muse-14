@@ -450,6 +450,16 @@ const cryptoCache = new Map<string, { at: number; price: number; prevClose: numb
 // Fetch crypto spot prices server-side. Doing this on the worker (instead of
 // straight from the browser) avoids CoinGecko's aggressive per-IP rate limits
 // and CORS flakiness, and lets us cache results across all clients.
+const CRYPTO_YAHOO_SYMBOLS: Record<string, string> = {
+  bitcoin: "BTC-USD",
+  ethereum: "ETH-USD",
+  ripple: "XRP-USD",
+  dogecoin: "DOGE-USD",
+  cardano: "ADA-USD",
+  solana: "SOL-USD",
+  "near": "NEAR-USD",
+};
+
 export const fetchCryptoQuotes = createServerFn({ method: "POST" })
   .inputValidator((input: { ids: string[] }) => {
     if (!input || !Array.isArray(input.ids)) {
@@ -498,10 +508,33 @@ export const fetchCryptoQuotes = createServerFn({ method: "POST" })
             results.push({ id, price: v.usd, prevClose: prev });
           }
         }
+        } else {
+          console.warn("coingecko fetch failed", r.status);
+        }
       } catch (e) {
         console.warn("coingecko fetch failed", e);
       }
-      // Fall back to the last cached value for anything that failed to refresh.
+
+      // CoinGecko's free API frequently rate-limits shared server IPs, which
+      // left crypto prices frozen for days. Fall back to Yahoo for major coins.
+      const missing = stale.filter((id) => !results.some((q) => q.id === id));
+      const yahooable = missing.filter((id) => CRYPTO_YAHOO_SYMBOLS[id]);
+      if (yahooable.length > 0) {
+        const settled = await Promise.allSettled(
+          yahooable.map(async (id) => {
+            const q = await fetchYahooQuote(CRYPTO_YAHOO_SYMBOLS[id]);
+            return q ? { id, price: q.price, prevClose: q.prevClose } : null;
+          }),
+        );
+        for (const s of settled) {
+          if (s.status === "fulfilled" && s.value) {
+            cryptoCache.set(s.value.id, { at: now, price: s.value.price, prevClose: s.value.prevClose });
+            results.push(s.value);
+          }
+        }
+      }
+
+      // Last resort: the last in-memory value for anything still missing.
       const have = new Set(results.map((q) => q.id));
       for (const id of stale) {
         if (have.has(id)) continue;
