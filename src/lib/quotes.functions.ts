@@ -507,7 +507,6 @@ export const fetchCryptoQuotes = createServerFn({ method: "POST" })
             cryptoCache.set(id, { at: now, price: v.usd, prevClose: prev });
             results.push({ id, price: v.usd, prevClose: prev });
           }
-        }
         } else {
           console.warn("coingecko fetch failed", r.status);
         }
