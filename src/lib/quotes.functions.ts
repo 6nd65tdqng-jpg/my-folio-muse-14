@@ -12,6 +12,8 @@ const FUND_QUOTE_ALIASES: Record<
   // (ISIN LU0225737302). Yahoo's MSUSX is a different US mutual fund, so route this
   // alias to the fund NAV instead of the ticker quote.
   MSUSX: { ftSymbol: "LU0225737302:USD", minPrice: 50, maxPrice: 500 },
+  // BlackRock Global Funds - India Fund A2 USD (ISIN LU0248272758).
+  BRKINDM: { ftSymbol: "LU0248272758:USD", minPrice: 10, maxPrice: 300 },
 };
 
 interface FinnhubQuote {
@@ -117,9 +119,17 @@ export interface IndexQuote {
   changePct: number;
 }
 
+// Holdings saved under a bare ticker that Yahoo only lists with an exchange
+// suffix. The saved ticker is kept; only the lookup symbol changes.
+const YAHOO_SYMBOL_ALIASES: Record<string, string> = {
+  // Invesco EURO STOXX Optimised Banks UCITS ETF (EUR) — Xetra listing.
+  S7XE: "S7XE.DE",
+};
+
 async function fetchYahooQuote(symbol: string): Promise<QuoteResult | null> {
+  const lookup = YAHOO_SYMBOL_ALIASES[symbol.toUpperCase()] ?? symbol;
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
-    symbol,
+    lookup,
   )}?interval=1m&range=1d&includePrePost=false`;
   const r = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; PortfolioApp/1.0)" },
@@ -440,6 +450,16 @@ const cryptoCache = new Map<string, { at: number; price: number; prevClose: numb
 // Fetch crypto spot prices server-side. Doing this on the worker (instead of
 // straight from the browser) avoids CoinGecko's aggressive per-IP rate limits
 // and CORS flakiness, and lets us cache results across all clients.
+const CRYPTO_YAHOO_SYMBOLS: Record<string, string> = {
+  bitcoin: "BTC-USD",
+  ethereum: "ETH-USD",
+  ripple: "XRP-USD",
+  dogecoin: "DOGE-USD",
+  cardano: "ADA-USD",
+  solana: "SOL-USD",
+  "near": "NEAR-USD",
+};
+
 export const fetchCryptoQuotes = createServerFn({ method: "POST" })
   .inputValidator((input: { ids: string[] }) => {
     if (!input || !Array.isArray(input.ids)) {
@@ -487,11 +507,33 @@ export const fetchCryptoQuotes = createServerFn({ method: "POST" })
             cryptoCache.set(id, { at: now, price: v.usd, prevClose: prev });
             results.push({ id, price: v.usd, prevClose: prev });
           }
+        } else {
+          console.warn("coingecko fetch failed", r.status);
         }
       } catch (e) {
         console.warn("coingecko fetch failed", e);
       }
-      // Fall back to the last cached value for anything that failed to refresh.
+
+      // CoinGecko's free API frequently rate-limits shared server IPs, which
+      // left crypto prices frozen for days. Fall back to Yahoo for major coins.
+      const missing = stale.filter((id) => !results.some((q) => q.id === id));
+      const yahooable = missing.filter((id) => CRYPTO_YAHOO_SYMBOLS[id]);
+      if (yahooable.length > 0) {
+        const settled = await Promise.allSettled(
+          yahooable.map(async (id) => {
+            const q = await fetchYahooQuote(CRYPTO_YAHOO_SYMBOLS[id]);
+            return q ? { id, price: q.price, prevClose: q.prevClose } : null;
+          }),
+        );
+        for (const s of settled) {
+          if (s.status === "fulfilled" && s.value) {
+            cryptoCache.set(s.value.id, { at: now, price: s.value.price, prevClose: s.value.prevClose });
+            results.push(s.value);
+          }
+        }
+      }
+
+      // Last resort: the last in-memory value for anything still missing.
       const have = new Set(results.map((q) => q.id));
       for (const id of stale) {
         if (have.has(id)) continue;
