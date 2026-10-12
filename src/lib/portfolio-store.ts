@@ -74,6 +74,19 @@ const seedValue = seed.reduce(
   0,
 );
 
+// Legacy fix: "NEA" was mis-mapped to Nodle; the real holding is NEAR Protocol.
+function fixLegacyHolding<T extends { ticker: string }>(h: T): T {
+  if (h.ticker.toUpperCase() !== "NEA") return h;
+  const x = h as T & Partial<Holding>;
+  return {
+    ...h,
+    ticker: "NEAR",
+    ...(x.coingeckoId !== undefined || x.assetType === "crypto"
+      ? { name: "NEAR Protocol", coingeckoId: "near", currentPrice: x.currentPrice && x.currentPrice > 0.01 ? x.currentPrice : 5.648, prevClose: undefined }
+      : {}),
+  };
+}
+
 function holdingKey(ticker: string, currency: Currency) {
   return `${ticker.trim().toUpperCase()}|${currency}`;
 }
@@ -331,9 +344,9 @@ export const usePortfolio = create<PortfolioState>()(
         })),
       replaceFromCloud: (data) =>
         set((s) => ({
-          holdings: data.holdings.filter((h) => h.quantity > 1e-9),
+          holdings: data.holdings.filter((h) => h.quantity > 1e-9).map(fixLegacyHolding),
           watchlist: data.watchlist ?? [],
-          transactions: data.transactions,
+          transactions: data.transactions.map(fixLegacyHolding),
           history: data.history ?? [],
           settings: { ...defaultSettings, ...s.settings, ...(data.settings ?? {}) },
           lastPriceUpdate: data.lastPriceUpdate ?? null,
@@ -423,7 +436,12 @@ export const usePortfolio = create<PortfolioState>()(
         if (state) {
           state.hydrated = true;
           if (Array.isArray(state.holdings)) {
-            state.holdings = state.holdings.filter((h) => h.quantity > 1e-9);
+            state.holdings = state.holdings
+              .filter((h) => h.quantity > 1e-9)
+              .map(fixLegacyHolding);
+          }
+          if (Array.isArray(state.transactions)) {
+            state.transactions = state.transactions.map(fixLegacyHolding);
           }
         }
       },
