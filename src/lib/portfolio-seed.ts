@@ -55,7 +55,7 @@ const RAW: RawSeed[] = [
   { symbol: "XBT", name: "Bitcoin", type: "crypto", quantity: 0.14670752, costBasis: null, currentPrice: 81866.04, currency: "USD", broker: "Swissquote" },
   { symbol: "XRP", name: "Ripple", type: "crypto", quantity: 4519.66, costBasis: null, currentPrice: 1.5324, currency: "USD", broker: "Swissquote" },
   { symbol: "XDG", name: "Dogecoin", type: "crypto", quantity: 15300, costBasis: null, currentPrice: 0.11807, currency: "USD", broker: "Swissquote" },
-  { symbol: "NEA", name: "NEA Token", type: "crypto", quantity: 823.16, costBasis: null, currentPrice: 1.587, currency: "USD", broker: "Swissquote" },
+  { symbol: "NEAR", name: "NEAR Protocol", type: "crypto", quantity: 823.16, costBasis: null, currentPrice: 1.587, currency: "USD", broker: "Swissquote" },
   { symbol: "ADA", name: "Cardano", type: "crypto", quantity: 2350, costBasis: null, currentPrice: 0.2764, currency: "USD", broker: "Swissquote" },
   { symbol: "ETH", name: "Ethereum", type: "crypto", quantity: 1.5502, costBasis: null, currentPrice: 2314.72, currency: "USD", broker: "Wio (FUZE)" },
   { symbol: "XRP", name: "Ripple (Wio FUZE)", type: "crypto", quantity: 1050.16639649, costBasis: null, currentPrice: 1.5324, currency: "USD", broker: "Wio (FUZE)" },
@@ -69,7 +69,7 @@ const COINGECKO: Record<string, string> = {
   XDG: "dogecoin",
   DOGE: "dogecoin",
   ADA: "cardano",
-  NEA: "nodle-network",
+  NEAR: "near",
 };
 
 export const SEED_HOLDINGS: Holding[] = RAW.map((r, i) => {
