@@ -176,12 +176,14 @@ export function useCloudSync(enabled: boolean) {
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", flushNow);
     window.addEventListener("beforeunload", flushNow);
+    window.addEventListener("cloud-sync:save-now", flushNow);
 
     return () => {
       if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", flushNow);
       window.removeEventListener("beforeunload", flushNow);
+      window.removeEventListener("cloud-sync:save-now", flushNow);
       unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

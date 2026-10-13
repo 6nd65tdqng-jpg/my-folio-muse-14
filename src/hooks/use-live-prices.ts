@@ -140,11 +140,8 @@ export function useLivePrices(enabled = true) {
     // reloads do not keep showing an old "last refreshed" timestamp or stale
     // prices from the previous Cloud snapshot.
     if (markRefreshed) {
-      queueMicrotask(() => {
-        void saveCloud({ data: usePortfolio.getState().getCloudData() }).catch((error) => {
-          console.warn("price refresh cloud save failed", error);
-        });
-      });
+      // Routed through cloud sync so saves respect the conflict check.
+      queueMicrotask(() => window.dispatchEvent(new Event("cloud-sync:save-now")));
     }
 
     if (notFreshEquities.length > 0 && freshEquities.length === 0) {
