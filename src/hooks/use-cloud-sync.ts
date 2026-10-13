@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { getCloudPortfolio, saveCloudPortfolio } from "@/lib/cloud-portfolio.functions";
 import { usePortfolio } from "@/lib/portfolio-store";
+import type { PortfolioCloudData, Transaction } from "@/lib/portfolio-types";
 
 function syncSignature(data: ReturnType<typeof usePortfolio.getState>) {
   return JSON.stringify({
@@ -11,13 +12,14 @@ function syncSignature(data: ReturnType<typeof usePortfolio.getState>) {
     transactions: data.transactions,
     history: data.history,
     settings: data.settings,
-    // This intentionally causes a lightweight Cloud save after a successful
-    // price refresh. The holdings themselves already contain the latest
-    // currentPrice/prevClose fields via getCloudData(), and this timestamp is
-    // what lets mobile/PWA users see the age of the numbers immediately after
-    // login instead of loading an undated stale snapshot.
     lastPriceUpdate: data.lastPriceUpdate,
   });
+}
+
+/** Transactions this device has that the cloud copy doesn't. */
+function localOnlyTransactions(local: PortfolioCloudData, cloud: PortfolioCloudData | null) {
+  const cloudIds = new Set((cloud?.transactions ?? []).map((t) => t.id));
+  return (local.transactions ?? []).filter((t: Transaction) => t.id && !cloudIds.has(t.id));
 }
 
 export function useCloudSync(enabled: boolean) {
@@ -27,6 +29,29 @@ export function useCloudSync(enabled: boolean) {
   const loadedRef = useRef(false);
   const savingRef = useRef(false);
   const saveTimeoutRef = useRef<number | null>(null);
+  // Cloud revision this device is based on. Saves only succeed against it,
+  // so an older device can never overwrite newer data from another device.
+  const revisionRef = useRef<string | null>(null);
+
+  /**
+   * Save local data. On conflict, adopt the newer cloud copy, merge in any
+   * transactions only this device has, and retry once.
+   */
+  async function saveWithMerge(): Promise<void> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const local = usePortfolio.getState().getCloudData();
+      const res = await saveCloud({ data: { data: local, baseUpdatedAt: revisionRef.current } });
+      if (res.ok) {
+        revisionRef.current = res.updatedAt;
+        return;
+      }
+      const extra = localOnlyTransactions(local, res.data);
+      revisionRef.current = res.updatedAt;
+      if (res.data) usePortfolio.getState().replaceFromCloud(res.data);
+      if (extra.length === 0) return; // cloud is newer and has everything
+      usePortfolio.getState().mergeTransactions(extra);
+    }
+  }
 
   useEffect(() => {
     if (!enabled) {
@@ -43,28 +68,21 @@ export function useCloudSync(enabled: boolean) {
       try {
         const cloud = await loadCloud();
         if (cancelled) return;
+        revisionRef.current = cloud.updatedAt;
 
         const local = usePortfolio.getState().getCloudData();
+        const extra = localOnlyTransactions(local, cloud.data);
 
         if (cloud.data) {
-          // Safety net against the data-loss bug: if the local device holds
-          // transactions that never made it to the cloud (e.g. a sell entered
-          // right before a reload), keep the local copy and push it up instead
-          // of overwriting it with stale cloud data.
-          const cloudIds = new Set(
-            ((cloud.data.transactions ?? []) as { id?: string }[]).map((t) => t.id),
-          );
-          const localExtra = (
-            (local.transactions ?? []) as { id?: string }[]
-          ).filter((t) => t.id && !cloudIds.has(t.id));
-
-          if (localExtra.length > 0) {
-            await saveCloud({ data: local });
-          } else {
-            usePortfolio.getState().replaceFromCloud(cloud.data);
+          // Cloud wins; keep any transactions entered on this device that
+          // never reached the cloud, then push the merged result.
+          usePortfolio.getState().replaceFromCloud(cloud.data);
+          if (extra.length > 0) {
+            usePortfolio.getState().mergeTransactions(extra);
+            await saveWithMerge();
           }
         } else {
-          await saveCloud({ data: local });
+          await saveWithMerge();
         }
 
         loadedRef.current = true;
@@ -81,14 +99,11 @@ export function useCloudSync(enabled: boolean) {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, loadCloud, saveCloud]);
 
   useEffect(() => {
     if (!enabled) return;
-
-    // Tracks whether a change arrived while a save was already in flight, so
-    // we never silently drop the latest edit (the previous bug that lost
-    // transactions entered right before a reload or app backgrounding).
     let pending = false;
 
     async function flush() {
@@ -101,16 +116,14 @@ export function useCloudSync(enabled: boolean) {
         window.clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
       }
-      const data = usePortfolio.getState().getCloudData();
       try {
         savingRef.current = true;
-        await saveCloud({ data });
+        await saveWithMerge();
       } catch (error) {
         console.error(error);
         toast.error("Cloud save failed. Please keep this page open and try again.");
       } finally {
         savingRef.current = false;
-        // A change came in mid-save — persist the newest snapshot now.
         if (pending) {
           pending = false;
           void flush();
@@ -120,23 +133,35 @@ export function useCloudSync(enabled: boolean) {
 
     const unsubscribe = usePortfolio.subscribe((state, previousState) => {
       if (!loadedRef.current) return;
-      // Price ticks update volatile quote fields every refresh. Saving those
-      // back to Cloud creates avoidable network work and makes the app feel
-      // laggy, so only persist user-owned portfolio changes.
-      if (syncSignature(state) === syncSignature(previousState)) return;
       if (savingRef.current) {
-        pending = true;
+        if (syncSignature(state) !== syncSignature(previousState)) pending = true;
         return;
       }
+      if (syncSignature(state) === syncSignature(previousState)) return;
       if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = window.setTimeout(() => {
         void flush();
       }, 800);
     });
 
-    // Flush immediately when the app is backgrounded, hidden, or about to be
-    // reloaded/closed. This is what guarantees a sell entered seconds before
-    // switching apps (or a PWA refresh) actually reaches the cloud.
+    // When the app comes back to the foreground, pull newer data from other
+    // devices before this device saves anything.
+    const refreshFromCloud = async () => {
+      if (!loadedRef.current || savingRef.current) return;
+      try {
+        const cloud = await loadCloud();
+        if (cloud.updatedAt && cloud.updatedAt !== revisionRef.current && cloud.data) {
+          const local = usePortfolio.getState().getCloudData();
+          const extra = localOnlyTransactions(local, cloud.data);
+          revisionRef.current = cloud.updatedAt;
+          usePortfolio.getState().replaceFromCloud(cloud.data);
+          if (extra.length > 0) usePortfolio.getState().mergeTransactions(extra);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
     const flushNow = () => {
       if (saveTimeoutRef.current) {
         window.clearTimeout(saveTimeoutRef.current);
@@ -146,6 +171,7 @@ export function useCloudSync(enabled: boolean) {
     };
     const onVisibility = () => {
       if (document.visibilityState === "hidden") flushNow();
+      else void refreshFromCloud();
     };
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", flushNow);
@@ -158,7 +184,8 @@ export function useCloudSync(enabled: boolean) {
       window.removeEventListener("beforeunload", flushNow);
       unsubscribe();
     };
-  }, [enabled, saveCloud]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, saveCloud, loadCloud]);
 
   return { ready };
 }
