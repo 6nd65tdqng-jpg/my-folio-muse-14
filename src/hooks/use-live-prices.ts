@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { usePortfolio } from "@/lib/portfolio-store";
 import { fetchStockQuotes, fetchCryptoQuotes } from "@/lib/quotes.functions";
-import { saveCloudPortfolio } from "@/lib/cloud-portfolio.functions";
 
 // US equities regular session: Mon–Fri 09:30–16:00 America/New_York.
 // Uses Intl to read ET wall-clock so DST is handled automatically.
@@ -36,7 +35,6 @@ export function useLivePrices(enabled = true) {
 
   const getStockQuotes = useServerFn(fetchStockQuotes);
   const getCryptoQuotes = useServerFn(fetchCryptoQuotes);
-  const saveCloud = useServerFn(saveCloudPortfolio);
   const forceNextEquityRefreshRef = useRef(true);
 
   // Stable, sorted symbol/id lists. The query key is derived from these so
@@ -140,11 +138,8 @@ export function useLivePrices(enabled = true) {
     // reloads do not keep showing an old "last refreshed" timestamp or stale
     // prices from the previous Cloud snapshot.
     if (markRefreshed) {
-      queueMicrotask(() => {
-        void saveCloud({ data: usePortfolio.getState().getCloudData() }).catch((error) => {
-          console.warn("price refresh cloud save failed", error);
-        });
-      });
+      // Routed through cloud sync so saves respect the conflict check.
+      queueMicrotask(() => window.dispatchEvent(new Event("cloud-sync:save-now")));
     }
 
     if (notFreshEquities.length > 0 && freshEquities.length === 0) {

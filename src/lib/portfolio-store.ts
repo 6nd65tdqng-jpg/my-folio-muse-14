@@ -53,6 +53,7 @@ interface PortfolioState {
     watchlist?: Holding[];
   }) => void;
   rebuildHoldingsFromTransactions: () => void;
+  mergeTransactions: (extra: Transaction[]) => void;
   resetAll: () => void;
 }
 
@@ -392,6 +393,13 @@ export const usePortfolio = create<PortfolioState>()(
           watchlist: d.watchlist ?? [],
           seedVersion: PORTFOLIO_SEED_VERSION,
         })),
+      mergeTransactions: (extra) =>
+        set((s) => {
+          const ids = new Set(s.transactions.map((t) => t.id));
+          const add = extra.filter((t) => !ids.has(t.id));
+          if (add.length === 0) return s;
+          return replayTransactions([...add, ...s.transactions], s.holdings);
+        }),
       rebuildHoldingsFromTransactions: () =>
         set((s) => replayTransactions(s.transactions, s.holdings)),
       resetAll: () =>
