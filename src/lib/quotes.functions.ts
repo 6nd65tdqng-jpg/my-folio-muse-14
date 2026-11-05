@@ -397,7 +397,7 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
           batch.map(async (sym) => {
             const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(sym)}&token=${finnhubKey}`;
             const r = await fetchWithRateLimit(url, undefined, {
-              maxRetries: 4,
+              maxRetries: 1,
               initialDelayMs: 1200,
               maxDelayMs: 8000,
             });
