@@ -147,11 +147,65 @@ async function fetchYahooQuote(symbol: string): Promise<QuoteResult | null> {
   };
 }
 
+// Batched Yahoo lookup: one request returns up to 20 symbols. The published
+// app runs on a worker with a hard cap (~50) on outbound requests per call;
+// fetching ~45 tickers one-by-one blew through it and the whole price refresh
+// failed silently on the live site.
+async function fetchYahooSparkBatch(symbols: string[]): Promise<QuoteResult[]> {
+  const lookupToOriginal = new Map<string, string>();
+  for (const s of symbols) {
+    lookupToOriginal.set(YAHOO_SYMBOL_ALIASES[s.toUpperCase()] ?? s, s);
+  }
+  const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${encodeURIComponent(
+    [...lookupToOriginal.keys()].join(","),
+  )}&range=1d&interval=5m`;
+  const r = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; PortfolioApp/1.0)" },
+  });
+  if (!r.ok) throw new Error(`Yahoo spark ${r.status}`);
+  const json = (await r.json()) as {
+    spark?: {
+      result?: Array<{
+        symbol?: string;
+        response?: Array<{
+          meta?: { regularMarketPrice?: number; chartPreviousClose?: number; previousClose?: number };
+        }>;
+      }>;
+    };
+  };
+  const out: QuoteResult[] = [];
+  for (const row of json.spark?.result ?? []) {
+    const original = row.symbol ? lookupToOriginal.get(row.symbol) : undefined;
+    const meta = row.response?.[0]?.meta;
+    if (!original || !meta) continue;
+    const price = Number(meta.regularMarketPrice);
+    const prevClose = Number(meta.chartPreviousClose ?? meta.previousClose);
+    if (!Number.isFinite(price) || price <= 0) continue;
+    out.push({
+      symbol: original,
+      price,
+      prevClose: Number.isFinite(prevClose) && prevClose > 0 ? prevClose : price,
+    });
+  }
+  return out;
+}
+
 async function fetchYahooQuotes(symbols: string[]): Promise<QuoteResult[]> {
   const quotes: QuoteResult[] = [];
-  const CONCURRENCY = 6;
-  for (let i = 0; i < symbols.length; i += CONCURRENCY) {
-    const batch = symbols.slice(i, i + CONCURRENCY);
+  const BATCH = 20;
+  const batches: string[][] = [];
+  for (let i = 0; i < symbols.length; i += BATCH) batches.push(symbols.slice(i, i + BATCH));
+  const batchResults = await Promise.allSettled(batches.map((b) => fetchYahooSparkBatch(b)));
+  for (const s of batchResults) {
+    if (s.status === "fulfilled") quotes.push(...s.value);
+    else console.warn("Yahoo batch quote fetch failed", s.reason);
+  }
+  // Per-symbol retry only for the few the batch missed, capped so the total
+  // outbound request count stays well under the worker limit.
+  const missing = missingSymbols(symbols, quotes).slice(0, 8);
+  const CONCURRENCY = 4;
+  for (let i = 0; i < missing.length; i += CONCURRENCY) {
+    const batch = missing.slice(i, i + CONCURRENCY);
     const settled = await Promise.allSettled(batch.map((sym) => fetchYahooQuote(sym)));
     for (const s of settled) {
       if (s.status === "fulfilled" && s.value) quotes.push(s.value);
@@ -323,7 +377,9 @@ export const fetchStockQuotes = createServerFn({ method: "POST" })
     // Twelve Data; the rest go to Finnhub.
     const yahooMissing = missingSymbols(normalSymbols, fresh);
     const intlSymbols = yahooMissing.filter((s) => s.includes("."));
-    const usSymbols = yahooMissing.filter((s) => !s.includes("."));
+    // Cap fallback lookups so one bad Yahoo response can't push the call
+    // past the worker's outbound request limit.
+    const usSymbols = yahooMissing.filter((s) => !s.includes(".")).slice(0, 8);
 
     // Finnhub fallback for US tickers.
     // Finnhub's free tier caps at ~60 requests/minute and, crucially,
